@@ -1,0 +1,28 @@
+2026-10-31 15:46:28,164 [INFO] ✅ قاعدة البيانات جاهزة
+2026-10-31 15:46:28,500 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getMe "HTTP/1.1 200 OK"
+2026-10-31 15:46:28,516 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/deleteWebhook "HTTP/1.1 200 OK"
+2026-10-31 15:46:28,518 [INFO] Scheduler started
+2026-10-31 15:46:28,519 [INFO] Application started
+2026-10-31 15:46:38,561 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getUpdates "HTTP/1.1 200 OK"
+2026-10-31 15:46:48,582 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getUpdates "HTTP/1.1 200 OK"
+2026-10-31 15:46:58,598 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getUpdates "HTTP/1.1 200 OK"
+2026-10-31 15:47:08,613 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getUpdates "HTTP/1.1 200 OK"
+2026-10-31 15:47:18,640 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getUpdates "HTTP/1.1 200 OK"
+2026-10-31 15:47:28,659 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getUpdates "HTTP/1.1 200 OK"
+2026-10-31 15:47:38,680 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getUpdates "HTTP/1.1 200 OK"
+2026-10-31 15:47:48,696 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getUpdates "HTTP/1.1 200 OK"
+2026-10-31 15:47:58,711 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getUpdates "HTTP/1.1 200 OK"
+2026-10-31 15:48:08,731 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getUpdates "HTTP/1.1 200 OK"
+2026-10-31 15:48:18,751 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getUpdates "HTTP/1.1 200 OK"
+2026-10-31 15:48:18,771 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getUpdates "HTTP/1.1 200 OK"
+2026-10-31 15:48:18,839 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/answerCallbackQuery "HTTP/1.1 200 OK"
+2026-10-31 15:48:18,879 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/editMessageText "HTTP/1.1 200 OK"
+2026-10-31 15:48:21,412 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getUpdates "HTTP/1.1 200 OK"
+2026-10-31 15:48:21,464 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/sendMessage "HTTP/1.1 200 OK"
+2026-10-31 15:49:21,846 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getUpdates "HTTP/1.1 200 OK"
+2026-10-31 15:49:22,206 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/editMessageText "HTTP/1.1 200 OK"
+2026-10-31 15:49:31,883 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getUpdates "HTTP/1.1 200 OK"
+2026-10-31 15:49:36,042 [INFO] HTTP Request: POST https://api.telegram.org/bot7190116639:AAFcX_AmFBOqv5ySJCDMAgxWrxlCHfrAb94/getUpdates "HTTP/1.1 200 OK"
+2026-10-31 15:49:36,044 [INFO] Application is stopping. This might take a moment.
+2026-10-31 15:49:36,045 [INFO] Scheduler has been shut down
+2026-10-31 15:49:36,056 [INFO] Application.stop() complete

@@ -1,0 +1,4 @@
+{
+  "tests/test_v20.py::test_design_preserves_variables_callbacks_and_safe_text": true,
+  "tests/test_v20.py::test_jaib_tls_stays_enabled": true
+}

@@ -1,0 +1,573 @@
+{
+  "settings_v2": [
+    {
+      "key": "usdt_rate_yer",
+      "value": "550.00",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "sales_enabled",
+      "value": "1",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "auto_payout_enabled",
+      "value": "1",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "wallet_deposit_enabled",
+      "value": "1",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "wallet_withdraw_enabled",
+      "value": "1",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "wallet_auto_withdraw_enabled",
+      "value": "1",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "display_decimals",
+      "value": "4",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "technical_channel_enabled",
+      "value": "1",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "public_liquidity_enabled",
+      "value": "1",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "public_liquidity_reserve_usdt",
+      "value": "1.00000000",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "withdrawal_operation_limit_enabled",
+      "value": "1",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "withdrawal_operation_limit_usdt",
+      "value": "100.00000000",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "liquidity_alert_enabled",
+      "value": "1",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "liquidity_alert_threshold_usdt",
+      "value": "20.00000000",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "liquidity_alert_recovery_usdt",
+      "value": "25.00000000",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "liquidity_alert_cooldown_minutes",
+      "value": "360",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "liquidity_alert_state",
+      "value": "NORMAL",
+      "updated_at": "2026-10-31 12:06:59"
+    },
+    {
+      "key": "backup_mode",
+      "value": "MANUAL",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "backup_interval_seconds",
+      "value": "86400",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "backup_max_copies",
+      "value": "100",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "backup_channel_id",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "backup_channel_title",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "backup_channel_username",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "backup_next_run_at",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "backup_last_attempt_at",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "backup_last_success_at",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "backup_last_status",
+      "value": "NEVER",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "backup_last_error",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "log_level",
+      "value": "INFO",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "debug_mode",
+      "value": "0",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "log_max_bytes",
+      "value": "10485760",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "log_backup_count",
+      "value": "5",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "log_channel_id",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "log_channel_title",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "log_channel_username",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "log_channel_enabled",
+      "value": "1",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "log_level_before_debug",
+      "value": "INFO",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "maintenance_enabled",
+      "value": "0",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "maintenance_reason",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "account_approval_mode",
+      "value": "MANUAL",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "account_auto_approval_delay_seconds",
+      "value": "30",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "account_verification_max_yer",
+      "value": "300",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "channel_users_id",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "channel_users_title",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "channel_admin_id",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "channel_admin_title",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "channel_backup_id",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "channel_backup_title",
+      "value": "",
+      "updated_at": "2026-10-31 12:07:00"
+    },
+    {
+      "key": "binance_last_egress_ip",
+      "value": "169.58.112.167",
+      "updated_at": "2026-10-31 12:11:22"
+    },
+    {
+      "key": "binance_last_egress_ip_epoch",
+      "value": "1793448681.9159575",
+      "updated_at": "2026-10-31 12:11:22"
+    },
+    {
+      "key": "binance_withdraw_available",
+      "value": "0",
+      "updated_at": "2026-10-31 12:11:26"
+    },
+    {
+      "key": "binance_auth_last_error",
+      "value": "السحب غير متاح حاليًا لعملة USDT.",
+      "updated_at": "2026-10-31 12:11:26"
+    },
+    {
+      "key": "binance_auth_last_error_code",
+      "value": "",
+      "updated_at": "2026-10-31 12:11:26"
+    },
+    {
+      "key": "binance_auth_egress_ip",
+      "value": "169.58.112.167",
+      "updated_at": "2026-10-31 12:11:26"
+    },
+    {
+      "key": "binance_auth_key_fingerprint",
+      "value": "27D87FD14F19",
+      "updated_at": "2026-10-31 12:11:26"
+    },
+    {
+      "key": "binance_auth_last_check_at",
+      "value": "2026-10-31 12:11:26",
+      "updated_at": "2026-10-31 12:11:26"
+    },
+    {
+      "key": "binance_auth_last_failure_epoch",
+      "value": "1793448686.2258675",
+      "updated_at": "2026-10-31 12:11:26"
+    },
+    {
+      "key": "jaib_check_lease",
+      "value": "{\"token\": \"7497cfadf9a44f3788cbed8debb6c16d\", \"until\": 1793448729.3399115}",
+      "updated_at": "2026-10-31 12:07:09"
+    },
+    {
+      "key": "jaib_transport_diagnostics",
+      "value": "[]",
+      "updated_at": "2026-10-31 12:07:09"
+    },
+    {
+      "key": "bot_username",
+      "value": "BuyUSDTYemenBot",
+      "updated_at": "2026-10-31 12:07:51"
+    },
+    {
+      "key": "ton_usd_rate_v20",
+      "value": "{\"usd\": \"1.1839344589869119\", \"timestamp\": 1793448503.1792245, \"source\": \"TonAPI\", \"stale\": false}",
+      "updated_at": "2026-10-31 12:08:23"
+    },
+    {
+      "key": "jaib_full_check_lease",
+      "value": "{\"until\": 0}",
+      "updated_at": "2026-10-31 12:10:35"
+    }
+  ],
+  "customers": [],
+  "orders_v2": [],
+  "audit_logs": [
+    {
+      "id": 1,
+      "actor_tg_id": 1654759285,
+      "actor_name": "admin",
+      "action": "JAIB_DIAGNOSTIC",
+      "entity_type": "connection",
+      "entity_id": "health",
+      "details": "",
+      "created_at": "2026-10-31 12:08:49"
+    },
+    {
+      "id": 2,
+      "actor_tg_id": 1654759285,
+      "actor_name": "admin",
+      "action": "JAIB_DIAGNOSTIC",
+      "entity_type": "connection",
+      "entity_id": "health",
+      "details": "",
+      "created_at": "2026-10-31 12:09:01"
+    },
+    {
+      "id": 3,
+      "actor_tg_id": 1654759285,
+      "actor_name": "admin",
+      "action": "JAIB_DIAGNOSTIC",
+      "entity_type": "connection",
+      "entity_id": "health",
+      "details": "",
+      "created_at": "2026-10-31 12:09:07"
+    },
+    {
+      "id": 4,
+      "actor_tg_id": 1654759285,
+      "actor_name": "admin",
+      "action": "JAIB_DIAGNOSTIC",
+      "entity_type": "connection",
+      "entity_id": "full",
+      "details": "",
+      "created_at": "2026-10-31 12:09:27"
+    },
+    {
+      "id": 5,
+      "actor_tg_id": 1654759285,
+      "actor_name": "admin",
+      "action": "JAIB_DIAGNOSTIC",
+      "entity_type": "connection",
+      "entity_id": "full",
+      "details": "",
+      "created_at": "2026-10-31 12:11:00"
+    }
+  ],
+  "security_logs": [],
+  "admin_users": [],
+  "bot_users": [
+    {
+      "telegram_id": 1654759285,
+      "username": "VlP_46",
+      "full_name": "⍣⃝ًٍ𝗔ًٍ𝗕ًٍ𝗕ًٍ𝗢ًٍ𝗨ًٍ𝗗̟",
+      "first_seen_at": "2026-10-31 12:10:53",
+      "last_seen_at": "2026-10-31 12:10:53",
+      "welcome_sent_at": null,
+      "is_blocked": 0,
+      "blocked_at": null
+    }
+  ],
+  "required_channels": [],
+  "broadcasts": [],
+  "user_wallets": [
+    {
+      "telegram_user_id": 1654759285,
+      "customer_id": null,
+      "available_balance": "0",
+      "locked_balance": "0",
+      "total_deposited": "0",
+      "total_withdrawn": "0",
+      "created_at": "2026-10-31 12:08:06",
+      "updated_at": "2026-10-31 12:08:06"
+    },
+    {
+      "telegram_user_id": 7515790092,
+      "customer_id": null,
+      "available_balance": "0",
+      "locked_balance": "0",
+      "total_deposited": "0",
+      "total_withdrawn": "0",
+      "created_at": "2026-10-31 12:10:09",
+      "updated_at": "2026-10-31 12:10:09"
+    }
+  ],
+  "wallet_deposits": [],
+  "wallet_withdrawals": [],
+  "wallet_ledger": [],
+  "technical_events": [],
+  "user_registrations": [],
+  "referrals": [],
+  "account_verification_requests": [],
+  "backup_channel_files": [],
+  "managed_assets": [
+    {
+      "symbol": "USDT",
+      "display_name": "Tether USD",
+      "provider": "BINANCE",
+      "enabled": 1,
+      "sort_order": 10,
+      "created_at": "2026-10-31 12:07:00",
+      "updated_at": "2026-10-31 12:07:00",
+      "liquidity_reserve": "0"
+    },
+    {
+      "symbol": "TRX",
+      "display_name": "Tron",
+      "provider": "BINANCE",
+      "enabled": 0,
+      "sort_order": 20,
+      "created_at": "2026-10-31 12:07:00",
+      "updated_at": "2026-10-31 12:07:00",
+      "liquidity_reserve": "0"
+    },
+    {
+      "symbol": "TON",
+      "display_name": "Toncoin",
+      "provider": "BINANCE",
+      "enabled": 0,
+      "sort_order": 30,
+      "created_at": "2026-10-31 12:07:00",
+      "updated_at": "2026-10-31 12:07:00",
+      "liquidity_reserve": "0"
+    },
+    {
+      "symbol": "BNB",
+      "display_name": "BNB",
+      "provider": "BINANCE",
+      "enabled": 0,
+      "sort_order": 40,
+      "created_at": "2026-10-31 12:07:00",
+      "updated_at": "2026-10-31 12:07:00",
+      "liquidity_reserve": "0"
+    }
+  ],
+  "managed_networks": [
+    {
+      "id": 1,
+      "asset_symbol": "USDT",
+      "network_code": "BSC",
+      "display_label": "BNB Smart Chain (BEP20)",
+      "provider": "BINANCE",
+      "address_regex": "0x[0-9a-fA-F]{40}",
+      "wallet_address": null,
+      "fee_override": null,
+      "enabled": 1,
+      "sort_order": 10,
+      "created_at": "2026-10-31 12:07:00",
+      "updated_at": "2026-10-31 12:07:00",
+      "minimum_floor": null
+    },
+    {
+      "id": 2,
+      "asset_symbol": "USDT",
+      "network_code": "TRX",
+      "display_label": "Tron (TRC20)",
+      "provider": "BINANCE",
+      "address_regex": "T[1-9A-HJ-NP-Za-km-z]{33}",
+      "wallet_address": null,
+      "fee_override": null,
+      "enabled": 0,
+      "sort_order": 20,
+      "created_at": "2026-10-31 12:07:00",
+      "updated_at": "2026-10-31 12:07:00",
+      "minimum_floor": null
+    },
+    {
+      "id": 3,
+      "asset_symbol": "USDT",
+      "network_code": "TON",
+      "display_label": "TON",
+      "provider": "BINANCE",
+      "address_regex": "(?:(?:EQ|UQ)[A-Za-z0-9_-]{46}|[0-9a-fA-F]{64})",
+      "wallet_address": null,
+      "fee_override": null,
+      "enabled": 0,
+      "sort_order": 30,
+      "created_at": "2026-10-31 12:07:00",
+      "updated_at": "2026-10-31 12:07:00",
+      "minimum_floor": null
+    },
+    {
+      "id": 4,
+      "asset_symbol": "USDT",
+      "network_code": "ETH",
+      "display_label": "Ethereum (ERC20)",
+      "provider": "BINANCE",
+      "address_regex": "0x[0-9a-fA-F]{40}",
+      "wallet_address": null,
+      "fee_override": null,
+      "enabled": 0,
+      "sort_order": 40,
+      "created_at": "2026-10-31 12:07:00",
+      "updated_at": "2026-10-31 12:07:00",
+      "minimum_floor": null
+    },
+    {
+      "id": 5,
+      "asset_symbol": "USDT",
+      "network_code": "MATIC",
+      "display_label": "Polygon",
+      "provider": "BINANCE",
+      "address_regex": "0x[0-9a-fA-F]{40}",
+      "wallet_address": null,
+      "fee_override": null,
+      "enabled": 0,
+      "sort_order": 50,
+      "created_at": "2026-10-31 12:07:00",
+      "updated_at": "2026-10-31 12:07:00",
+      "minimum_floor": null
+    },
+    {
+      "id": 11,
+      "asset_symbol": "USDT",
+      "network_code": "TON_USDT",
+      "display_label": "USDT · TON",
+      "provider": "TON_HOT",
+      "address_regex": "",
+      "wallet_address": null,
+      "fee_override": null,
+      "enabled": 0,
+      "sort_order": 15,
+      "created_at": "2026-10-31 12:07:00",
+      "updated_at": "2026-10-31 12:07:00",
+      "minimum_floor": null
+    }
+  ],
+  "tutorial_buttons": [],
+  "payment_reference_claims": [],
+  "ton_outbox": [],
+  "wallet_notification_outbox": [],
+  "webapp_action_tokens": [],
+  "ton_receipts": [],
+  "ton_admin_operations": [],
+  "ton_chain_events": [],
+  "jaib_diagnostic_runs": [
+    {
+      "id": 1,
+      "kind": "FULL",
+      "created_at": "2026-10-31 12:09:27",
+      "result_json": "{\"checks\": [{\"stage\": \"SERVER\", \"ok\": true, \"details\": {\"pid\": 207377, \"cpu_count\": 4, \"load\": [0.22021484375, 0.21826171875, 0.2041015625], \"memory_kib\": {\"MemTotal\": 8131768, \"MemAvailable\": 6981000}, \"database_readable\": true}}, {\"stage\": \"SERVICES\", \"details\": [{\"name\": \"jaib.service\", \"active_state\": \"active\", \"sub_state\": \"running\"}, {\"name\": \"cloudflared.service\", \"active_state\": \"active\", \"sub_state\": \"running\"}, {\"name\": \"nginx.service\", \"active_state\": \"active\", \"sub_state\": \"running\"}], \"note\": \"حالة العملية فقط؛ لا تثبت وصول جهاز العميل عبر النفق.\"}, {\"stage\": \"CONFIG\", \"ok\": true, \"missing_names\": [], \"invalid_encoding_names\": []}, {\"stage\": \"NETWORK_TLS\", \"host\": \"www.w-jaib.com\", \"port\": 2074, \"ok\": false, \"dns_addresses\": [\"82.114.183.91\"], \"code\": \"TIMEOUT\"}, {\"stage\": \"NETWORK_TLS\", \"host\": \"api.jaib.com.ye\", \"port\": 1074, \"ok\": false, \"dns_addresses\": [\"82.114.183.91\"], \"code\": \"TIMEOUT\"}, {\"stage\": \"NETWORK_TLS\", \"host\": \"api3.jaib.com.ye\", \"port\": 9974, \"ok\": false, \"dns_addresses\": [\"82.114.183.172\"], \"code\": \"TIMEOUT\"}, {\"stage\": \"NETWORK_TLS\", \"host\": \"api.e-jaib.com\", \"port\": 2174, \"ok\": false, \"dns_addresses\": [\"82.114.179.217\"], \"code\": \"TIMEOUT\"}, {\"stage\": \"NETWORK_TLS\", \"host\": \"api.ahd.com.ye\", \"port\": 6073, \"ok\": false, \"dns_addresses\": [\"82.114.181.171\"], \"code\": \"TIMEOUT\"}, {\"stage\": \"NETWORK_TLS\", \"host\": \"api.jaib.com.ye\", \"port\": 6072, \"ok\": false, \"dns_addresses\": [\"82.114.183.91\"], \"code\": \"TIMEOUT\"}], \"health\": {\"ok\": false, \"status\": \"UNKNOWN\", \"configured\": true, \"reason\": \"لم يُجرَ الفحص بعد\", \"checked_at\": \"—\", \"response_ms\": 0, \"previous_status\": \"UNKNOWN\", \"check_in_progress\": true}, \"stopped_at\": \"BOOTSTRAP_OR_LOGIN\", \"tls_warning\": \"توافق جيب: التحقق من شهادات TLS معطّل لهذه الجلسة فقط؛ يُنصح باستخدام CA موثوقة وإعادة تفعيله.\", \"created_at\": \"2026-10-31 12:09:27\", \"elapsed_seconds\": 24.92}"
+    },
+    {
+      "id": 2,
+      "kind": "FULL",
+      "created_at": "2026-10-31 12:11:00",
+      "result_json": "{\"checks\": [{\"stage\": \"SERVER\", \"ok\": true, \"details\": {\"pid\": 207377, \"cpu_count\": 4, \"load\": [0.07177734375, 0.17041015625, 0.18359375], \"memory_kib\": {\"MemTotal\": 8131768, \"MemAvailable\": 6951668}, \"database_readable\": true}}, {\"stage\": \"SERVICES\", \"details\": [{\"name\": \"jaib.service\", \"active_state\": \"active\", \"sub_state\": \"running\"}, {\"name\": \"cloudflared.service\", \"active_state\": \"active\", \"sub_state\": \"running\"}, {\"name\": \"nginx.service\", \"active_state\": \"active\", \"sub_state\": \"running\"}], \"note\": \"حالة العملية فقط؛ لا تثبت وصول جهاز العميل عبر النفق.\"}, {\"stage\": \"CONFIG\", \"ok\": true, \"missing_names\": [], \"invalid_encoding_names\": []}, {\"stage\": \"NETWORK_TLS\", \"host\": \"www.w-jaib.com\", \"port\": 2074, \"ok\": false, \"dns_addresses\": [\"82.114.183.91\"], \"code\": \"TIMEOUT\"}, {\"stage\": \"NETWORK_TLS\", \"host\": \"api.jaib.com.ye\", \"port\": 1074, \"ok\": false, \"dns_addresses\": [\"82.114.183.91\"], \"code\": \"TIMEOUT\"}, {\"stage\": \"NETWORK_TLS\", \"host\": \"api3.jaib.com.ye\", \"port\": 9974, \"ok\": false, \"dns_addresses\": [\"82.114.183.172\"], \"code\": \"TIMEOUT\"}, {\"stage\": \"NETWORK_TLS\", \"host\": \"api.e-jaib.com\", \"port\": 2174, \"ok\": false, \"dns_addresses\": [\"82.114.179.217\"], \"code\": \"TIMEOUT\"}, {\"stage\": \"NETWORK_TLS\", \"host\": \"api.ahd.com.ye\", \"port\": 6073, \"ok\": false, \"dns_addresses\": [\"82.114.181.171\"], \"code\": \"TIMEOUT\"}, {\"stage\": \"NETWORK_TLS\", \"host\": \"api.jaib.com.ye\", \"port\": 6072, \"ok\": false, \"dns_addresses\": [\"82.114.183.91\"], \"code\": \"TIMEOUT\"}], \"health\": {\"ok\": false, \"status\": \"UNKNOWN\", \"configured\": true, \"reason\": \"لم يُجرَ الفحص بعد\", \"checked_at\": \"—\", \"response_ms\": 0, \"previous_status\": \"UNKNOWN\", \"check_in_progress\": true}, \"stopped_at\": \"BOOTSTRAP_OR_LOGIN\", \"tls_warning\": \"توافق جيب: التحقق من شهادات TLS معطّل لهذه الجلسة فقط؛ يُنصح باستخدام CA موثوقة وإعادة تفعيله.\", \"created_at\": \"2026-10-31 12:11:00\", \"elapsed_seconds\": 24.61}"
+    }
+  ],
+  "jaib_pending_queries": [],
+  "exported_at": "2026-10-31 12:11:41",
+  "schema_version": "20.0.0"
+}
