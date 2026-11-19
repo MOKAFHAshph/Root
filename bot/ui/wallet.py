@@ -1,0 +1,268 @@
+"""Internal-wallet user messages and keyboards."""
+from __future__ import annotations
+
+import asyncio
+from typing import Any
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+
+from bot.services.dynamic_withdrawals import binance_live_limits
+from bot.services.liquidity_display import get_unified_liquidity
+from bot.ui.design_render import render_bot_text, render_bot_button
+from bot.runtime import seed_globals as _seed_globals, export_globals as _export_globals
+_seed_globals(globals())
+
+# ---------------- واجهات المستخدم ----------------
+
+def wallet_admin_contact_url() -> str:
+    value = str(ADMIN_CONTACT or "").strip()
+    if value.startswith("https://t.me/") or value.startswith("tg://"):
+        return value
+    if value.startswith("@") and len(value) > 1:
+        return f"https://t.me/{value[1:]}"
+    return f"tg://user?id={int(ADMIN_ID)}"
+
+
+def wallet_user_main_kb(is_admin: bool) -> InlineKeyboardMarkup:
+    rows = [
+        [btn(render_bot_button('bot.ui.wallet.py:27:button','➕ إيداع رصيد', []), "wallet_deposit", "success"), btn(render_bot_button('bot.ui.wallet.py:27:button','💸 سحب USDT', []), "wallet_withdraw", "primary")],
+        [btn(render_bot_button('bot.ui.wallet.py:28:button','📊 إحصائياتي', []), "wallet_stats"), btn(render_bot_button('bot.ui.wallet.py:28:button','👥 الإحالات', []), "wallet_referrals")],
+        [btn(render_bot_button('bot.ui.wallet.py:29:button','📒 سجل العمليات', []), "wallet_history"), btn(render_bot_button('bot.ui.wallet.py:29:button','ℹ️ التعليمات', []), "help")],
+        [InlineKeyboardButton(render_bot_button('bot.ui.wallet.py:30:button','💬 طرق دفع أخرى / تواصل مع الإدارة', []), url=wallet_admin_contact_url())],
+    ]
+    if is_admin:
+        rows.append([btn(render_bot_button('bot.ui.wallet.py:33:button','⚙️ لوحة الأدمن', []), "admin_panel", "success")])
+    return InlineKeyboardMarkup(rows)
+
+user_main_kb = wallet_user_main_kb
+
+def wallet_history_text(user_id: int) -> str:
+    final_rows = list(wallet_report_operations(user_id))
+    with DBX.connect() as con:
+        pending_rows = con.execute(
+            """
+            SELECT COALESCE(updated_at, created_at) AS event_at, withdrawal_code AS reference,
+                   amount_usdt AS amount, status
+            FROM wallet_withdrawals
+            WHERE telegram_user_id=?
+              AND status IN ('AUTO_PENDING','PROCESSING','SUBMITTED','STATUS_UNKNOWN','MANUAL_REVIEW')
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (int(user_id), WALLET_RECENT_LIMIT),
+        ).fetchall()
+    rows = final_rows + [
+        {
+            "created_at": row["event_at"],
+            "type_label": "سحب USDT",
+            "reference": row["reference"],
+            "amount": row["amount"],
+            "status": row["status"],
+        }
+        for row in pending_rows
+    ]
+    rows.sort(key=lambda item: str(item.get("created_at") or ""), reverse=True)
+    rows = rows[:WALLET_RECENT_LIMIT]
+    if not rows:
+        return render_bot_text('fragment.bot.ui.wallet.py:wallet_history_text:67','<b>📒 لا توجد عمليات مالية حتى الآن.</b>',[])
+    status_labels = {
+        "COMPLETED": ("✅", "مكتملة"),
+        "REJECTED": ("❌", "مرفوضة"),
+        "FAILED_RELEASED": ("❌", "فشلت وأعيد الرصيد"),
+        "EXPIRED_RELEASED": ("⌛", "انتهت وأعيد الرصيد"),
+                "PROCESSING": ("⏳", "قيد التنفيذ"),
+        "SUBMITTED": ("🔄", "أُرسلت وتنتظر التأكيد"),
+        "STATUS_UNKNOWN": ("🕒", "قيد التحقق"),
+        "MANUAL_REVIEW": ("🕒", "مراجعة يدوية"),
+    }
+    items = ["<b>📒 آخر العمليات المالية</b>"]
+    for row in rows:
+        icon, status_text = status_labels.get(str(row["status"]), ("•", str(row["status"])))
+        items.append(
+            render_bot_text('fragment.bot.ui.wallet.py:wallet_history_text:82','<b>{v0} {v1}</b>\n💵 {v2} USDT\n📌 الحالة: <b>{v3}</b>\n🧾 <code>{v4}</code>\n📅 {v5}',[f'{icon}',f"{html(row['type_label'])}",f"{html(format_display_amount(row['amount']))}",f'{html(status_text)}',f"{html(row['reference'])}",f"{html(row['created_at'])}"])
+        )
+    return "\n\n".join(items)[:4000]
+
+def wallet_stats_text(user_id: int) -> str:
+    stats = wallet_user_stats(user_id)
+    return (
+        render_bot_text('fragment.bot.ui.wallet.py:wallet_stats_text:93','<b>📊 إحصائياتي</b>\n\n💰 الرصيد المتاح لديك: <b>{v0} USDT</b>\n🔒 الرصيد المحجوز: <b>{v1} USDT</b>\n💵 إجمالي الرصيد: <b>{v2} USDT</b>\n\n<b>📥 الإيداعات</b>\n• عدد العمليات: <b>{v3}</b>\n• إجمالي الريال: <b>{v4} ريال</b>\n• إجمالي USDT المضاف: <b>{v5} USDT</b>\n\n<b>📤 السحوبات</b>\n• عدد العمليات الناجحة: <b>{v6}</b>\n• إجمالي المسحوب: <b>{v7} USDT</b>\n\n📅 أول عملية: <code>{v8}</code>\n📅 آخر عملية: <code>{v9}</code>',[f"{html(format_display_amount(stats['available']))}",f"{html(format_display_amount(stats['locked']))}",f"{html(format_display_amount(stats['total']))}",f"{stats['deposit_count']}",f"{html(format_yer_amount(stats['deposit_yer']))}",f"{html(format_display_amount(stats['deposit_usdt']))}",f"{stats['withdraw_count']}",f"{html(format_display_amount(stats['withdraw_usdt']))}",f"{html(stats['first_at'] or '—')}",f"{html(stats['last_at'] or '—')}"])
+    )
+
+def help_text() -> str:
+    routes = wallet_network_routes()
+    routes_text = "\n".join(f"• {html(item['label'])}" for item in routes) or "• لا توجد شبكة جاهزة حالياً"
+    limit_text = (
+        f"• الحد الأقصى للسحب في كل عملية: <b>{html(format_display_amount(effective_withdrawal_ceiling()))} USDT</b>\n"
+        if withdrawal_operation_limit_enabled() else ""
+    )
+    return (
+        render_bot_text('fragment.bot.ui.wallet.py:help_text:116','<b>ℹ️ تعليمات المحفظة الداخلية</b>\n\n<b>الإيداع التلقائي:</b>\n1. اضغط إيداع رصيد.\n2. حوّل من حساب Jaib الشخصي المطابق لبياناتك.\n3. أرسل رقم العملية الصحيح فقط.\n4. بعد التحقق الآلي يضاف USDT إلى رصيدك بالسعر المثبت للجلسة.\n\n⚠️ <b>لا نقبل التحويل من طرف ثالث.</b> يتحمل المستخدم مسؤولية التحويل من حساب غير مطابق أو إدخال رقم عملية خاطئ.\n\n<b>السحب:</b>\n• الحد الأدنى يُجلب تلقائيًا حسب الشبكة.\n{v0}• يتحمل البوت <b>0.01 USDT</b> من رسوم الشبكة؛ إن كانت الرسوم 0.01 أو أقل فالسحب مجاني، وإلا يدفع العميل الباقي.\n• يحجز المبلغ عند تقديم الطلب ويظهر قيد المعالجة أثناء الإرسال الآلي.\n• تتحول العملية إلى مكتملة تلقائيًا بعد تأكيد المزود والشبكة.\n• عند الفشل المؤكد يعاد المبلغ تلقائياً.\n• عند غموض النتيجة يبقى محجوزاً حتى التحقق.\n\n<b>الشبكات المتاحة:</b>\n{v1}\n\n⚠️ <b>إخلاء مسؤولية مهم:</b> يجب أن يطابق عنوان الاستلام الشبكة المختارة تمامًا. إدخال عنوان خاطئ أو عنوان من شبكة مختلفة قد يؤدي إلى فقدان كامل للمبلغ، ولا تتحمل الإدارة مسؤولية البيانات التي يدخلها المستخدم.',[f'{limit_text}',f'{routes_text}'])
+    )
+
+
+def help_keyboard() -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    video_getter = globals().get("network_address_video_url")
+    guide_getter = globals().get("bot_usage_guide_url")
+    video_url = str(video_getter() if callable(video_getter) else globals().get("NETWORK_ADDRESS_VIDEO_URL", "") or "").strip()
+    guide_url = str(guide_getter() if callable(guide_getter) else globals().get("BOT_USAGE_GUIDE_URL", "") or "").strip()
+    if video_url:
+        rows.append([InlineKeyboardButton(render_bot_button('bot.ui.wallet.py:145:button','🎥 كيف أستخرج عنوان الشبكة؟', []), url=video_url)])
+    else:
+        rows.append([btn(render_bot_button('bot.ui.wallet.py:147:button','🎥 كيف أستخرج عنوان الشبكة؟', []), "help_network_address")])
+    if guide_url:
+        rows.append([InlineKeyboardButton(render_bot_button('bot.ui.wallet.py:149:button','📘 كيفية استخدام البوت', []), url=guide_url)])
+    else:
+        rows.append([btn(render_bot_button('bot.ui.wallet.py:151:button','📘 كيفية استخدام البوت', []), "help_usage")])
+    rows.append([btn(render_bot_button('bot.ui.wallet.py:152:button','🏠 القائمة الرئيسية', []), "main_menu")])
+    return InlineKeyboardMarkup(rows)
+
+
+async def show_main(target: Any, context: ContextTypes.DEFAULT_TYPE):
+    user = target.from_user if hasattr(target, "from_user") else target.effective_user
+    register_bot_user(user)
+    subscription_checked = bool((context.user_data or {}).pop("_subscription_checked", False))
+    if not subscription_checked and not await ensure_required_subscription(target, context, user.id):
+        return
+    customer = DBX.get_customer_by_telegram(user.id)
+    is_admin = DBX.is_admin(user.id)
+    if not is_admin and (not customer or customer["status"] != "ACTIVE"):
+        text = (
+            render_bot_text('fragment.bot.ui.wallet.py:show_main:167','<b>مرحبًا بك في خدمة محفظة USDT</b>\n\nتعمل الخدمة تلقائيًا مع محفظة Jaib، كما تتوفر طرق دفع يدوية عبر الإدارة.\n\n🔐 حسابك بانتظار التفعيل. اضغط الزر أدناه لطلب المساعدة أو التفعيل.',[])
+        )
+        await send_or_edit(
+            target,
+            render_bot_text('bot.ui.wallet.py:170:message','{v0}', [str(text)]),
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton(render_bot_button('bot.ui.wallet.py:174:button','📩 طلب تفعيل الحساب / تواصل مع الإدارة', []), url=wallet_admin_contact_url())]]
+            ),
+        )
+        return
+
+    loading_text = "⏳ <b>جاري التحديث...</b>"
+    loading_msg = None
+    try:
+        if hasattr(target, "edit_message_text"):
+            loading_msg = await target.edit_message_text(render_bot_text('bot.ui.wallet.py:183:message','{v0}', [str(loading_text)]), parse_mode=ParseMode.HTML)
+        elif hasattr(target, "effective_message") and target.effective_message:
+            loading_msg = await target.effective_message.reply_text(render_bot_text('bot.ui.wallet.py:185:message','{v0}', [str(loading_text)]), parse_mode=ParseMode.HTML)
+        else:
+            loading_msg = await target.reply_text(render_bot_text('bot.ui.wallet.py:187:message','{v0}', [str(loading_text)]), parse_mode=ParseMode.HTML)
+    except Exception:
+        pass
+
+    async def _ui_provider_call(func, *args, **kwargs):
+        return await asyncio.wait_for(
+            asyncio.to_thread(func, *args, **kwargs),
+            timeout=6,
+        )
+
+    routes = wallet_network_routes()
+    primary_network = routes[0]["code"] if routes else "BSC"
+    limits_job = _ui_provider_call(binance_live_limits, primary_network, force_refresh=False)
+    liquidity_job = (
+        asyncio.wait_for(asyncio.to_thread(get_unified_liquidity), timeout=12)
+        if public_liquidity_enabled()
+        else asyncio.sleep(0, result={"items": [], "incomplete": False})
+    )
+    limits_result, liquidity_result = await asyncio.gather(
+        limits_job,
+        liquidity_job,
+        return_exceptions=True,
+    )
+    min_withdraw = (
+        wallet_decimal(limits_result["minimum"])
+        if isinstance(limits_result, dict)
+        else wallet_decimal("1")
+    )
+    liquidity = (
+        liquidity_result
+        if isinstance(liquidity_result, dict)
+        else {"items": [], "incomplete": True}
+    )
+
+    available, locked = wallet_balances(user.id)
+    text = (
+        render_bot_text('fragment.bot.ui.wallet.py:show_main:228','<b>{v0} — المحفظة الداخلية</b>\n\nأهلاً <b>{v1}</b>',[f"{html(presentation_config()['title'] if callable(globals().get('presentation_config')) else APP_NAME)}",f'{html(user.first_name)}'])
+    )
+    if callable(globals().get("presentation_config")) and presentation_config()["welcome"]:
+        text += "\n" + presentation_welcome_html()
+    if customer:
+        text += render_bot_text('fragment.bot.ui.wallet.py:show_main:234','\n👤 العميل: <b>{v0}</b>',[f"{html(customer['full_name'])}"])
+
+    text += (
+        render_bot_text('fragment.bot.ui.wallet.py:show_main:237','\n\n💰 الرصيد المتاح لديك: <b>{v0} USDT</b>\n🔒 الرصيد المحجوز: <b>{v1} USDT</b>\n\n━━━━━━━━━━━━━━━━━━\n<b>⚠️ الحد الأدنى للسحب</b>\n<b>💵 {v2} USDT</b>\n<i>يتم تحديثه تلقائيًا حسب إعداد الشبكة</i>\n━━━━━━━━━━━━━━━━━━\n',[f'{html(format_display_amount(available))}',f'{html(format_display_amount(locked))}',f'{html(format_display_amount(min_withdraw))}'])
+    )
+    if withdrawal_operation_limit_enabled():
+        text += render_bot_text('fragment.bot.ui.wallet.py:show_main:246','📈 الحد الأقصى للسحب في كل عملية: <b>{v0} USDT</b>\n',[f'{html(format_display_amount(effective_withdrawal_ceiling()))}'])
+    if public_liquidity_enabled():
+        text += "\n<b>💧 السيولة المتاحة | Available Liquidity</b>\n"
+        if not liquidity.get("items"):
+            text += "<i>غير متاحة مؤقتًا</i>\n"
+        elif liquidity.get("incomplete"):
+            text += "<i>⚠️ بعض الأرصدة قيد التحديث</i>\n"
+    text += (
+        render_bot_text('fragment.bot.ui.wallet.py:show_main:259','💱 سعر الصرف الحالي: <b>{v0} YER = 1 USDT</b>\n⚡ الدفع عبر <b>محفظة Jaib</b>: تلقائي وفوري\n🛡️ يساهم البوت بـ<b>0.01 USDT</b> من رسوم كل سحب',[f'{html(format_yer_amount(effective_customer_rate(user.id)))}'])
+    )
+
+    markup = wallet_user_main_kb(is_admin)
+    if public_liquidity_enabled() and liquidity.get("items"):
+        # Bot API 9.4 / PTB 22.7+: inert coloured buttons, placed above real actions.
+        from telegram import InlineKeyboardButton as _DisplayButton
+        boxes = []
+        use_boxes = True
+        for item in liquidity["items"]:
+            try:
+                import os as _liquidity_os
+                emoji_key = ("PUBLIC_LIQUIDITY_TON_EMOJI_ID" if item["asset"] == "TON"
+                             else "PUBLIC_LIQUIDITY_USDT_EMOJI_ID")
+                emoji_id = _liquidity_os.getenv(emoji_key, "").strip()
+                emoji_icon = "🔵" if item["asset"] == "TON" else "🟢"
+                kwargs = {"text": f"{item['label']}  {item['dollars']}",
+                          "callback_data": "liq:display", "style": item["style"]}
+                if emoji_id.isdecimal():
+                    kwargs["icon_custom_emoji_id"] = emoji_id
+                else:
+                    kwargs["text"] = f"{emoji_icon} {kwargs['text']}"
+                boxes.append([_DisplayButton(**kwargs)])
+            except TypeError:
+                use_boxes = False
+                break
+        if use_boxes:
+            markup = InlineKeyboardMarkup(boxes + list(markup.inline_keyboard))
+        else:
+            import html as _html_module
+            for item in liquidity["items"]:
+                icon = "🔵" if item["asset"] == "TON" else "🟢"
+                text += ("<blockquote>" + icon + " <b>" +
+                         _html_module.escape(item["label"]) + "</b>\n" +
+                         "💵 <b>" + _html_module.escape(item["dollars"]) +
+                         "</b></blockquote>\n")
+    final_message = None
+    if loading_msg:
+        try:
+            final_message = await loading_msg.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=markup)
+        except Exception:
+            pass
+    if final_message is None:
+        if hasattr(target, "effective_message") and target.effective_message:
+            final_message = await target.effective_message.reply_text(render_bot_text('bot.ui.wallet.py:272:message','{v0}', [str(text)]), parse_mode=ParseMode.HTML, reply_markup=markup)
+        else:
+            final_message = await target.reply_text(render_bot_text('bot.ui.wallet.py:274:message','{v0}', [str(text)]), parse_mode=ParseMode.HTML, reply_markup=markup)
+
+
+async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    set_state(context, None)
+    user = update.effective_user
+    register_bot_user(user)
+    if not bot_user_welcome_sent(user.id):
+        await update.effective_message.reply_text(
+            render_bot_text('bot.ui.wallet.py:290:message','مرحباً بك في <b>{v0}</b>.\nيمكنك إيداع رصيد بالريال ثم سحب USDT عدة مرات من رصيدك الداخلي.', [f'{html(APP_NAME)}']),
+            parse_mode=ParseMode.HTML,
+        )
+        mark_bot_user_welcome_sent(user.id)
+    await show_main(update, context)
+
+_export_globals(globals())

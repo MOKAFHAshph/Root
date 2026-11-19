@@ -1,0 +1,17 @@
+V13 offline verification results
+===============================
+PASS: Python compileall
+PASS: existing integration regression suite
+PASS: exact 550 YER account verification simulation
+PASS: account request submission and admin approval
+PASS: rejection, optional-proof workflow, refund confirmation, and restart
+PASS: referral reward idempotency
+PASS: Mini App JavaScript syntax check
+PASS: PDF engine offline check
+PASS: backup, restore, retention, and scheduler checks
+PASS: global symbol integrity
+
+Not performed:
+- No live Jaib transaction was queried.
+- No live Telegram channel approval was executed.
+- No real Binance/Bybit/Aptos transfer was executed.

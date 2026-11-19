@@ -1,0 +1,12 @@
+{
+  "bot/handlers/wallet_callbacks.py": {
+    "existed": true,
+    "old_sha256": "9639193fe45e1c73e0cada601b1ddb3d0784edeb240b49f8ba40f4d5c9c21c49",
+    "installed_sha256": "0c779ea36f7eefa244b1a74b85fbd4386ea5eb47087ebbf80ece4fe4fc75ab9f"
+  },
+  "bot/ui/deposit_inline_rich.py": {
+    "existed": false,
+    "old_sha256": null,
+    "installed_sha256": "83e94eecf3603af52eea846d7a470095c6de356c1c5c208ebd8810eec1d12dc4"
+  }
+}

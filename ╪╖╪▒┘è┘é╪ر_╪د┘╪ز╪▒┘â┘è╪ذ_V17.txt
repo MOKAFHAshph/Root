@@ -1,0 +1,46 @@
+طريقة تركيب V17 فوق V16
+========================
+
+1) أوقف البوت والتطبيق المصغر بالكامل.
+
+2) خذ نسخة احتياطية من:
+   .env
+   crypto_sales_bot.db
+   backups/
+
+3) احذف الملفات القديمة التالية من مشروعك:
+   bot\providers\aptos.py
+   bot\admin\bybit.py
+   tests\v15_wallet_automation_check.py
+   tests\v16_runtime_recovery_check.py
+
+PowerShell:
+   Remove-Item bot\providers\aptos.py -Force -ErrorAction SilentlyContinue
+   Remove-Item bot\admin\bybit.py -Force -ErrorAction SilentlyContinue
+   Remove-Item tests\v15_wallet_automation_check.py -Force -ErrorAction SilentlyContinue
+   Remove-Item tests\v16_runtime_recovery_check.py -Force -ErrorAction SilentlyContinue
+
+4) فك ضغط jaib_wallet_v17_update.zip داخل المجلد الرئيسي للمشروع، ووافق على استبدال الملفات.
+
+5) لا تستبدل ملف .env ولا قاعدة البيانات بملفات من مشروع آخر.
+
+6) من ملف .env الحالي احذف إعدادات APTOS وBYBIT والسطر:
+   BINANCE_AUTH_COOLDOWN_MINUTES
+
+وتأكد من القيم:
+   BINANCE_API_KEY=...
+   BINANCE_API_SECRET=...
+   BINANCE_WITHDRAW_ENABLED=true
+   AUTO_ONCHAIN_WITHDRAW=true
+   BEP20_ENABLED=true
+   BEP20_NETWORK_CODE=BSC
+   ALLOWED_NETWORKS=BSC:BEP20
+
+7) شغّل الفحص:
+   python -m compileall -q bot run.py webapp_main.py run_all.py
+   python verify_project.py
+
+8) شغّل نسخة واحدة فقط:
+   python run_all.py
+
+عند التشغيل سيُفحص Binance فورًا. عند الفشل يتوقف السحب فقط ويصل السبب إلى الأدمن، ثم يعاد الفحص كل 30 ثانية حتى يعود السحب تلقائيًا.

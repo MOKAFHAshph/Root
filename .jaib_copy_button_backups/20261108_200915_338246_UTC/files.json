@@ -1,0 +1,12 @@
+{
+  "bot/ui/deposit_copy_card.py": {
+    "existed": false,
+    "old_sha256": null,
+    "installed_sha256": "4ad3ec2ed44c952af9a52a269ac272553f3f27dba86ec90a19e2ee23b1059e0e"
+  },
+  "bot/handlers/wallet_callbacks.py": {
+    "existed": true,
+    "old_sha256": "f0ffbf0577d73b647d091aab627c161afa3ad9a37d74a05013790b77e03aca91",
+    "installed_sha256": "9639193fe45e1c73e0cada601b1ddb3d0784edeb240b49f8ba40f4d5c9c21c49"
+  }
+}

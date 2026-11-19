@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta http-equiv="Cache-Control" content="no-store" />
+<title>إدارة بيانات جيب</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;color-scheme:light dark}
+*{box-sizing:border-box}body{background:var(--tg-theme-bg-color,#f7f8fa);color:var(--tg-theme-text-color,#17202d);margin:0;padding:20px 14px 35px}main{max-width:680px;margin:auto}
+h1{font-size:1.25rem;margin:0 0 8px}p{line-height:1.7;color:var(--tg-theme-hint-color,#606b7c);margin:8px 0 18px}
+section{border:1px solid var(--tg-theme-hint-color,#ccd5df);border-radius:14px;padding:14px;margin:15px 0;background:var(--tg-theme-secondary-bg-color,#fff)}
+h2{font-size:1.05rem;margin:0 0 12px}label{display:block;font-weight:650;font-size:.9rem;margin:11px 0 5px}
+input,textarea{width:100%;border:1px solid #a0aab7;border-radius:9px;padding:11px;font:inherit;background:var(--tg-theme-bg-color,#fff);color:var(--tg-theme-text-color,#15202b)}
+textarea{min-height:145px;resize:vertical;direction:ltr;text-align:left;font-size:.83rem}
+button{display:inline-block;width:100%;background:var(--tg-theme-button-color,#1877dc);color:var(--tg-theme-button-text-color,#fff);font:inherit;font-weight:bold;border:0;border-radius:10px;padding:13px;cursor:pointer;margin:5px 0}
+button.secondary{background:var(--tg-theme-secondary-bg-color,#dee6ee);color:var(--tg-theme-text-color,#17202d);border:1px solid #8d9aab}button:disabled{opacity:.5;cursor:default}
+small{color:var(--tg-theme-hint-color,#606b7c)}.alert{border-right:4px solid #d19b23;padding:10px;background:rgba(221,164,51,.09)}.danger{color:#ce4e4e}
+#result{white-space:pre-wrap;line-height:1.75;word-break:break-word;padding:10px;border-radius:10px}.ok{background:rgba(60,157,108,.12)}.err{background:rgba(214,49,49,.12)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:490px){.row{grid-template-columns:1fr}}
+#confirmBlock{display:none}.checkboxline{display:flex;gap:8px;align-items:flex-start}.checkboxline input{width:18px;min-width:18px;margin:4px 0 0}
+</style>
+</head>
+<body>
+<main>
+  <h1>🔐 إدارة محفظة جيب</h1>
+  <p>خاصة بالأدمن الرئيسي. يمكنك لصق التقرير المفكوك كاملًا مع مخرجات Reqable؛ تستخرج الصفحة بيانات <code>clientInfo</code> و<code>deviceInfo</code> تلقائيًا وتعرض التغييرات قبل الحفظ.</p>
+  <div class="alert">لا تُرسل التقرير أو كلمة المرور في رسائل تيليجرام. هذه الصفحة تتحقق من توقيع Mini App؛ التحديث يتطلب معاينة وموافقة. رمز <code>VAL</code> المشفّر وحده لا يكفي بدون JSON مفكوك.</div>
+  <section>
+    <h2>1. تقرير المحفظة الجديدة (اختياري)</h2>
+    <label for="raw">الصق التقرير كاملًا، أو JSON المفكوك فقط</label>
+    <textarea id="raw" autocomplete="off" spellcheck="false" placeholder="الصق تقرير Reqable الذي يحتوي على JSON المفكوك هنا"></textarea>
+    <small>لن تعرض الصفحة كلمة المرور أو الرموز في المعاينة، ولن تحفظ النص في المتصفح بعد التأكيد.</small>
+  </section>
+  <section>
+    <h2>2. بيانات التحويل التي يراها العملاء</h2>
+    <p>يمكنك تعديلها حتى دون تغيير بيانات الدخول. تعديل اسم/رقم المستلم لا يتم تلقائيًا من رقم تسجيل الدخول إلا إذا كتبته هنا.</p>
+    <label for="JAIB_DISPLAY_NAME">اسم صاحب المحفظة الأساسي (المستلم)</label>
+    <input id="JAIB_DISPLAY_NAME" maxlength="100" autocomplete="off" />
+    <label for="JAIB_PRIMARY_PHONE">رقم استقبال التحويل الأساسي</label>
+    <input id="JAIB_PRIMARY_PHONE" maxlength="40" inputmode="tel" autocomplete="off" />
+    <label for="JAIB_SECONDARY_PHONE">رقم الاستقبال البديل</label>
+    <input id="JAIB_SECONDARY_PHONE" maxlength="40" inputmode="tel" autocomplete="off" />
+    <label for="JAIB_SECONDARY_BENEFICIARY_NAME">اسم صاحب المحفظة البديلة</label>
+    <input id="JAIB_SECONDARY_BENEFICIARY_NAME" maxlength="100" autocomplete="off" />
+    <div class="checkboxline"><input type="checkbox" id="clear_secondary" /><label for="clear_secondary" style="margin:0;font-weight:400">حذف رقم الاستقبال البديل عند الحفظ</label></div>
+  </section>
+  <button id="preview">🔍 مقارنة ومعاينة التغييرات</button>
+  <div id="result" role="status" aria-live="polite"></div>
+  <section id="confirmBlock">
+    <h2>3. التأكيد النهائي</h2>
+    <p>راجع أسماء الحقول ورقم المستلم الظاهر أعلاه. تأكد من أنك مخوّل بتعديل محفظة العملاء. سيحفظ النظام نسخة احتياطية ثم يعيد تشغيل V20 لتطبيق البيانات.</p>
+    <label for="confirm">اكتب: تحديث جيب</label>
+    <input id="confirm" autocomplete="off" placeholder="تحديث جيب" />
+    <button id="apply" disabled>💾 تأكيد التحديث وإعادة التشغيل</button>
+  </section>
+</main>
+<script>
+'use strict';
+(() => {
+  const tg = window.Telegram && window.Telegram.WebApp;
+  const get = id => document.getElementById(id);
+  const ids = ['JAIB_DISPLAY_NAME','JAIB_PRIMARY_PHONE','JAIB_SECONDARY_PHONE','JAIB_SECONDARY_BENEFICIARY_NAME'];
+  const previewBtn = get('preview'); const applyBtn = get('apply');
+  const result = get('result');
+  let nonce = null;
+  if (tg) { tg.ready(); tg.expand(); }
+  if (!tg || !tg.initData) {
+    result.textContent = 'افتح الصفحة من زر البوت داخل Telegram Mini App الخاص بك.';
+    result.className='err'; previewBtn.disabled=true; return;
+  }
+  const headers = () => ({'Content-Type':'application/json','X-Telegram-Init-Data':tg.initData});
+  const payload = () => ({
+    raw:get('raw').value,
+    receiver:Object.fromEntries(ids.map(id=>[id,get(id).value])),
+    clear_secondary:get('clear_secondary').checked,
+  });
+  const fail = err => {result.className='err';result.textContent='❌ '+err;};
+  const info = text => {result.className='ok';result.textContent=text;};
+  const send = async (route, body) => {
+    const res=await fetch('/api/admin/jaib-config/'+route, {method:'POST',headers:headers(),body:JSON.stringify(body),cache:'no-store',credentials:'omit'});
+    let json={};try{json=await res.json()}catch(e){}
+    if (!res.ok) throw new Error(json.detail||'تعذر الاتصال بالخادم ('+res.status+')');
+    return json;
+  };
+  fetch('/api/admin/jaib-config/current',{headers:{'X-Telegram-Init-Data':tg.initData},cache:'no-store',credentials:'omit'})
+    .then(async r=>{if(!r.ok) throw new Error('فشل التحقق من هوية الأدمن'); return r.json()})
+    .then(data=>{for(const id of ids)get(id).value=(data.receiver&&data.receiver[id])||''})
+    .catch(e=>{fail(e.message);previewBtn.disabled=true});
+  const reset=()=>{nonce=null;get('confirmBlock').style.display='none';applyBtn.disabled=true;get('confirm').value='';};
+  for(const field of ['raw', ...ids]) get(field).addEventListener('input',reset);
+  get('clear_secondary').addEventListener('change',reset);
+  get('confirm').addEventListener('input',()=>{applyBtn.disabled=get('confirm').value.trim()!=='تحديث جيب'||!nonce});
+  previewBtn.addEventListener('click',async()=>{
+    reset(); previewBtn.disabled=true;result.textContent='جاري مقارنة الإعدادات على السيرفر...';
+    try {
+      const response=await send('preview',payload());
+      if(response.already_current){info('✅ جميع القيم المدخلة مطابقة للإعدادات الحالية؛ لا حاجة للتحديث.');return}
+      nonce=response.nonce;
+      let line='الحقول المختلفة ('+response.changed.length+'):\n'+response.changed.map(s=>'• '+s).join('\n');
+      const recv=response.receiver||{};
+      line+='\n\nبيانات التحويل التي ستُعرض للعملاء:\n';
+      line+='الاسم: '+(recv.JAIB_DISPLAY_NAME||'—')+'\nالرقم الأساسي: '+(recv.JAIB_PRIMARY_PHONE||'—');
+      line+='\nالرقم البديل: '+(recv.JAIB_SECONDARY_PHONE||'—')+'\nالاسم البديل: '+(recv.JAIB_SECONDARY_BENEFICIARY_NAME||'—');
+      if(response.warnings&&response.warnings.length) line+='\n\n⚠️ '+response.warnings.join('\n⚠️ ');
+      info(line);
+      get('confirmBlock').style.display='block';
+    }catch(e){fail(e.message||'فشل الفحص')}
+    finally{previewBtn.disabled=false}
+  });
+  applyBtn.addEventListener('click',async()=>{
+    if(!nonce||get('confirm').value.trim()!=='تحديث جيب')return;
+    applyBtn.disabled=true;previewBtn.disabled=true;
+    try{
+      const response=await send('commit',{...payload(),nonce,confirm:'تحديث جيب'});
+      const msg=response.restart_scheduled?'تم جدولة إعادة تشغيل V20 خلال 12 ثانية.':'تعذرت جدولة إعادة التشغيل تلقائياً؛ نفّذ systemctl restart v20.service من السيرفر.';
+      info('✅ حُفظت الإعدادات مع نسخة احتياطية.\n'+msg+'\nراجع فحص جيب التالي للتأكد من نجاح الاتصال.');
+      get('raw').value='';get('confirm').value='';reset();
+    }catch(e){fail(e.message||'تعذر الحفظ');reset()}
+    finally{previewBtn.disabled=false}
+  });
+})();
+</script>
+</body>
+</html>

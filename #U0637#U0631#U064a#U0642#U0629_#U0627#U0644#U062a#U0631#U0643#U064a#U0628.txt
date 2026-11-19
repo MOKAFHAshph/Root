@@ -1,0 +1,30 @@
+تحديث V12 — السحب التلقائي واستقرار البوت
+==========================================
+
+1) أوقف المشروع بالكامل.
+2) احتفظ بنسخة احتياطية من مجلد bot الحالي.
+3) انسخ مجلد bot الموجود داخل هذه الحزمة فوق مجلد bot في مشروعك.
+4) وافق على استبدال الملفات التسعة فقط.
+5) لا تحذف ملف .env ولا قاعدة البيانات.
+
+الملفات المستبدلة:
+- bot/application.py
+- bot/utils.py
+- bot/services/payout_operations.py
+- bot/wallet/withdrawals.py
+- bot/providers/aptos.py
+- bot/handlers/wallet_callbacks.py
+- bot/webapp/server.py
+- bot/webapp/static/index.html
+- bot/ui/wallet.py
+
+بعد الاستبدال شغّل:
+python -m compileall bot
+python verify_project.py
+python run_all.py
+
+لتقليل حجم السجل والحمل أثناء التشغيل العادي، استخدم في .env:
+LOG_LEVEL=INFO
+DEBUG_MODE=false
+
+لا يحتاج هذا التحديث إلى تعديل بنية قاعدة البيانات.

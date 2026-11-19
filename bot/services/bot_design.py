@@ -1,0 +1,154 @@
+"""Edit Telegram presentation without changing Mini App navigation or callbacks."""
+from __future__ import annotations
+import json,re
+from pathlib import Path
+from html import escape as _design_escape
+from bot.runtime import seed_globals as _seed_globals, export_globals as _export_globals
+_seed_globals(globals())
+_DESIGN_CATALOG=json.loads((Path(__file__).resolve().parents[1]/'ui/design_catalog.json').read_text())
+_DESIGN_MAP={item['id']:item for item in _DESIGN_CATALOG}
+
+class BotDesignText(str):
+    def __new__(cls,value,design_id,style=None,emoji_id='',fallback_text=None):
+        result=super().__new__(cls,value);result.design_id=design_id;result.style=style;result.emoji_id=emoji_id;result.fallback_text=fallback_text if fallback_text is not None else value;return result
+
+
+def bot_design_settings():
+    value=DBX.get_setting('bot_design_v20')
+    return json.loads(value) if value else {'version':0,'overrides':{}}
+
+
+def render_bot_text(key,template,values):
+    config=bot_design_settings();item=config['overrides'].get(key) or {};custom=item.get('template')
+    text=_design_escape(custom) if custom is not None else template
+    text=re.sub(r'\{v(\d+)\}',lambda m:str(values[int(m.group(1))]) if int(m.group(1))<len(values) else m.group(),text)
+    if item.get('emoji_id') and presentation_config()['custom_emoji_enabled']:
+        icon=_design_escape(item.get('icon') or '👋')
+        text=f'<tg-emoji emoji-id="{item["emoji_id"]}">{icon}</tg-emoji> '+text
+    elif item.get('icon'):text=_design_escape(item['icon'])+' '+text
+    if len(text)>4000 and custom is not None:
+        text=re.sub(r'\{v(\d+)\}',lambda m:str(values[int(m.group(1))]) if int(m.group(1))<len(values) else m.group(),template)
+    return text
+
+
+def render_bot_button(key,template,values):
+    config=bot_design_settings();item=config['overrides'].get(key) or {}
+    text=item.get('template',template)
+    text=re.sub(r'\{v(\d+)\}',lambda m:str(values[int(m.group(1))]) if int(m.group(1))<len(values) else m.group(),text)
+    fallback=(item.get('icon','')+' '+text).strip()
+    if item.get('icon') and not (item.get('emoji_id') and presentation_config()['custom_emoji_enabled']):text=item['icon']+' '+text
+    return BotDesignText(text,key,item.get('style') if item else None,item.get('emoji_id',''),fallback)
+
+
+_DesignBaseButton=InlineKeyboardButton
+class InlineKeyboardButton(_DesignBaseButton):
+    __slots__=('_wallet20_fallback_text',)
+    def __init__(self,*args,**kwargs):
+        text=kwargs.get('text',args[0] if args else '')
+        if isinstance(text,BotDesignText):
+            if text.style is not None:
+                if text.style:kwargs['style']=text.style
+                else:kwargs.pop('style',None)
+            if text.emoji_id and presentation_config()['custom_emoji_enabled']:kwargs['icon_custom_emoji_id']=text.emoji_id
+            if args:args=(str(text),)+args[1:]
+            else:kwargs['text']=str(text)
+        super().__init__(*args,**kwargs)
+        object.__setattr__(self,'_wallet20_fallback_text',getattr(text,'fallback_text',str(text)))
+
+
+def bot_design_catalog():
+    return {'version':bot_design_settings()['version'],'items':_DESIGN_CATALOG,'overrides':bot_design_settings()['overrides'],
+        'coverage':'أسماء الأزرار ونصوص الرسائل في مواضع الإرسال المسجلة. متغيرات v0 وغيرها تحفظ البيانات الديناميكية. واجهة التطبيق المصغر مستقلة.',
+        'presentation':presentation_config()}
+
+
+def save_bot_design(payload):
+    overrides=payload.get('overrides')
+    if not isinstance(overrides,dict):raise WalletUserError('إعدادات التخصيص غير صالحة.')
+    cleaned={}
+    for key,value in overrides.items():
+        catalog=_DESIGN_MAP.get(key)
+        if not catalog or not isinstance(value,dict):raise WalletUserError('موضع التخصيص غير موجود في هذه النسخة.')
+        text=str(value.get('template',catalog['template']));icon=str(value.get('icon',''));emoji=str(value.get('emoji_id',''));style=str(value.get('style',''))
+        variables=re.findall(r'\{(v\d+)\}',text)
+        if sorted(variables)!=sorted(catalog['variables']):raise WalletUserError('يجب الاحتفاظ بكل متغير مالي/ديناميكي مرة واحدة: '+', '.join('{'+x+'}' for x in catalog['variables']))
+        if not text.strip() or len(text)>(180 if catalog['kind']=='button' else 3500) or len(icon)>8 or len(emoji)>40 or (emoji and not emoji.isdigit()) or style not in ('','primary','success','danger'):
+            raise WalletUserError('راجع طول النص والرمز ونمط الزر.')
+        cleaned[key]={'template':text,'icon':icon,'emoji_id':emoji,'style':style}
+    with DBX.connect() as con:
+        con.execute('BEGIN IMMEDIATE')
+        current=con.execute("SELECT value FROM settings_v2 WHERE key='bot_design_v20'").fetchone()
+        version=int(json.loads(current[0])['version']) if current else 0
+        if int(payload.get('version',-1))!=version:raise WalletUserError('تغير التخصيص من جلسة أخرى؛ أعد فتحه.')
+        if payload.get('reset_main'):
+            present=con.execute("SELECT value FROM settings_v2 WHERE key='presentation_v1'").fetchone()
+            pv=int(json.loads(present[0]).get('version',0)) if present else 0
+            if int(payload.get('presentation_version',-1))!=pv:raise WalletUserError('تغيرت هوية البوت في جلسة أخرى؛ أعد تحميل المحرر.')
+            from bot.services.upgrade import _PRESENTATION_DEFAULTS
+            defaults={'version':pv+1,'title':APP_NAME,'welcome':'','welcome_icon':'👋','welcome_emoji_id':'','custom_emoji_enabled':False,
+                'buttons':[dict(value,key=key,custom_emoji_id='',order=i*10) for i,(key,value) in enumerate(_PRESENTATION_DEFAULTS.items())]}
+            con.execute("INSERT INTO settings_v2 VALUES('presentation_v1',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at",(json.dumps(defaults,ensure_ascii=False),now_str()))
+        result={'version':version+1,'overrides':cleaned}
+        con.execute("INSERT INTO settings_v2 VALUES('bot_design_v20',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at",(json.dumps(result,ensure_ascii=False),now_str()));con.commit()
+    return result
+
+_export_globals(globals())
+
+
+def install_bot_design_transport():
+    """Retry only an explicit Telegram rejection of presentation metadata.
+    A timeout/network error is never retried here; callback/URL actions are preserved.
+    """
+    import telegram
+    from telegram.error import BadRequest
+    from functools import wraps
+    bot_class=getattr(telegram,'Bot',None)
+    if bot_class is None:return
+    def wrap_method(original,text_position):
+        @wraps(original)
+        async def wrapped(self,*args,**kwargs):
+            try:return await original(self,*args,**kwargs)
+            except BadRequest as exc:
+                if not any(word in str(exc).lower() for word in ('emoji','premium','button_style','style')):raise
+                new=dict(kwargs);changed=False
+                markup=new.get('reply_markup')
+                if markup and hasattr(markup,'inline_keyboard'):
+                    rows=[]
+                    for row in markup.inline_keyboard:
+                        cleaned=[]
+                        for button in row:
+                            data=button.to_dict()
+                            if getattr(button,'_wallet20_fallback_text',None):data['text']=button._wallet20_fallback_text
+                            for field in ('icon_custom_emoji_id','style'):
+                                if field in data:changed=True;data.pop(field)
+                            cleaned.append(_DesignBaseButton.de_json(data,bot=None))
+                        rows.append(cleaned)
+                    new['reply_markup']=InlineKeyboardMarkup(rows)
+                text=new.get('text',args[text_position] if len(args)>text_position else None)
+                if text and '<tg-emoji' in str(text):
+                    plain=re.sub(r'</?tg-emoji\b[^>]*>','',str(text));changed=True
+                    if 'text' in new:new['text']=plain
+                    else:
+                        mutable=list(args);mutable[text_position]=plain;args=tuple(mutable)
+                if not changed:raise
+                log.warning('Telegram rejected custom presentation; standard emoji/button fallback applied')
+                return await original(self,*args,**new)
+        wrapped._bot_design20=True
+        return wrapped
+    for name,position in (('send_message',1),('edit_message_text',0)):
+        method=getattr(bot_class,name,None)
+        if method and not getattr(method,'_bot_design20',False):setattr(bot_class,name,wrap_method(method,position))
+
+install_bot_design_transport()
+
+# A display-only, non-action callback. The existing financial router is untouched.
+_liquidity_original_callback = on_callback
+
+async def on_callback(update, context):
+    query = getattr(update, "callback_query", None)
+    if query is not None and getattr(query, "data", None) == "liq:display":
+        await query.answer()
+        return
+    return await _liquidity_original_callback(update, context)
+
+_export_globals(globals())

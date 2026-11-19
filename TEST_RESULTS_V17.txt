@@ -1,0 +1,15 @@
+V17 TEST RESULTS
+================
+PASS: Python compileall for bot, run.py, webapp_main.py, and run_all.py.
+PASS: Mini App JavaScript syntax check.
+PASS: Binance-only source and environment checks.
+PASS: Startup API key, IP, reading permission, withdrawal permission, and BSC health logic.
+PASS: No fixed Binance cooldown or ten-minute wait.
+PASS: Pending withdrawal remains locked during outage.
+PASS: Pending withdrawal executes automatically immediately after a successful health check.
+PASS: Completed withdrawal notifies the user.
+PASS: Confirmed individual failure releases the locked amount and notifies the user.
+PASS: Individual withdrawal errors do not stop Binance globally.
+PASS: Full offline integration, onboarding, PDF, and backup verification suite.
+
+No real Binance withdrawal or Jaib transfer was executed during testing.

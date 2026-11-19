@@ -1,0 +1,24 @@
+Jaib V18.2.1 Offline Verification Results
+Date: 2026-08-13
+
+PASS: Python compileall for bot, launchers, and tests
+PASS: JavaScript syntax check for both inline Mini App scripts
+PASS: final_integration_check.py
+PASS: account_verification_check.py
+PASS: v18_integration_check.py
+PASS: v18_1_integration_check.py
+PASS: v18_2_integration_check.py (V18.2.1 acceptance coverage)
+PASS: v14_ui_check.py
+PASS: v17_binance_only_check.py
+PASS: pdf_engine_check.py
+PASS: backup_automation_check.py
+
+V18.2.1 coverage:
+- numeric-only Binance off-chain transfer identifier in storage, display, and copy
+- raw provider response retained for audit
+- existing historical identifiers normalized at output time
+- on-chain transaction hashes retained without modification
+- highlighted, dynamically sourced withdrawal minimum in the Telegram main menu
+- per-customer pricing, managed tutorials, and optional animated emoji regression coverage
+
+Result: PASS — all offline project verification checks completed.

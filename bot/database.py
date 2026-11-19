@@ -1,0 +1,844 @@
+"""SQLite connection, schema initialization, repositories, and audit operations.
+
+"""
+from __future__ import annotations
+
+from bot.runtime import seed_globals as _seed_globals, export_globals as _export_globals
+_seed_globals(globals())
+
+# ============================================================
+# قاعدة البيانات
+# ============================================================
+
+
+class AutoClosingConnection(sqlite3.Connection):
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            return super().__exit__(exc_type, exc_value, traceback)
+        finally:
+            self.close()
+
+
+class DB:
+    def __init__(self, path: str):
+        resolved = Path(path)
+        if not resolved.is_absolute():
+            resolved = BASE_DIR / resolved
+        resolved.parent.mkdir(parents=True, exist_ok=True)
+        self.path = str(resolved.resolve())
+        self.init()
+
+    def connect(self):
+        # Telegram handlers, schedulers, and API workers may touch SQLite at the
+        # same time. A busy timeout plus WAL prevents transient lock errors from
+        # escaping into user flows such as /start and referral registration.
+        con = sqlite3.connect(self.path, timeout=30, factory=AutoClosingConnection)
+        con.row_factory = sqlite3.Row
+        con.execute("PRAGMA foreign_keys = ON")
+        con.execute("PRAGMA busy_timeout = 30000")
+        return con
+
+    def init(self):
+        with self.connect() as con:
+            con.execute("PRAGMA journal_mode = WAL")
+            con.execute("PRAGMA synchronous = NORMAL")
+            con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS settings_v2 (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS provider_cache (
+                    cache_key TEXT PRIMARY KEY,
+                    payload_json TEXT NOT NULL,
+                    fetched_at_epoch REAL NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS runtime_instances (
+                    instance_id TEXT PRIMARY KEY,
+                    service_name TEXT NOT NULL,
+                    pid INTEGER NOT NULL,
+                    hostname TEXT,
+                    cwd TEXT,
+                    env_path TEXT,
+                    db_path TEXT,
+                    provider_key_fingerprint TEXT,
+                    egress_ip TEXT,
+                    parent_pid INTEGER,
+                    started_at TEXT NOT NULL,
+                    last_seen_at TEXT NOT NULL,
+                    stopped_at TEXT
+                )
+                """
+            )
+            con.execute("CREATE INDEX IF NOT EXISTS idx_runtime_instances_service ON runtime_instances(service_name, last_seen_at)")
+            con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS customers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    full_name TEXT NOT NULL,
+                    phone_primary TEXT NOT NULL,
+                    phone_alt TEXT,
+                    telegram_id INTEGER UNIQUE,
+                    telegram_username TEXT,
+                    status TEXT NOT NULL DEFAULT 'ACTIVE',
+                    notes TEXT,
+                    added_by INTEGER,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            # ترقية قاعدة بيانات قديمة بدون حذف البيانات
+            customer_columns = {row[1] for row in con.execute("PRAGMA table_info(customers)").fetchall()}
+            migrations = {
+                "full_name": "TEXT NOT NULL DEFAULT ''",
+                "phone_primary": "TEXT NOT NULL DEFAULT ''",
+                "phone_alt": "TEXT",
+                "telegram_id": "INTEGER",
+                "telegram_username": "TEXT",
+                "status": "TEXT NOT NULL DEFAULT 'ACTIVE'",
+                "notes": "TEXT",
+                "added_by": "INTEGER",
+                "created_at": "TEXT",
+                "updated_at": "TEXT",
+            }
+            for column, declaration in migrations.items():
+                if column not in customer_columns:
+                    con.execute(f"ALTER TABLE customers ADD COLUMN {column} {declaration}")
+
+            # Empty phone values are valid for newly registered PENDING users.
+            # Use partial indexes from the first initialization so multiple pending
+            # accounts never collide before the registration layer is loaded.
+            con.execute("DROP INDEX IF EXISTS idx_customers_phone_primary")
+            con.execute("DROP INDEX IF EXISTS idx_customers_phone_alt")
+            try:
+                con.execute(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_phone_primary_nonempty "
+                    "ON customers(phone_primary) WHERE phone_primary IS NOT NULL AND phone_primary != ''"
+                )
+                con.execute(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_phone_alt_nonempty "
+                    "ON customers(phone_alt) WHERE phone_alt IS NOT NULL AND phone_alt != ''"
+                )
+            except sqlite3.IntegrityError:
+                log.warning("تعذر إنشاء فهارس الهواتف الجزئية بسبب بيانات مكررة قديمة")
+            con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS orders_v2 (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    order_code TEXT UNIQUE NOT NULL,
+                    customer_id INTEGER NOT NULL,
+                    telegram_user_id INTEGER NOT NULL,
+                    telegram_username TEXT,
+                    full_name TEXT,
+                    crypto_symbol TEXT NOT NULL DEFAULT 'USDT',
+                    crypto_amount TEXT NOT NULL,
+                    exchange_rate_yer TEXT NOT NULL,
+                    expected_yer_amount TEXT NOT NULL,
+                    payment_method TEXT NOT NULL DEFAULT 'JAIB',
+                    payment_reference TEXT UNIQUE,
+                    payer_name TEXT,
+                    payer_phone TEXT,
+                    payer_phone_matched TEXT,
+                    paid_yer_amount TEXT,
+                    delivery_type TEXT,
+                    binance_id TEXT,
+                    network_code TEXT,
+                    network_label TEXT,
+                    destination_address TEXT,
+                    payout_request_id TEXT UNIQUE,
+                    binance_withdraw_id TEXT,
+                    txid TEXT,
+                    status TEXT NOT NULL,
+                    rejection_reason TEXT,
+                    error_message TEXT,
+                    created_at TEXT NOT NULL,
+                    paid_at TEXT,
+                    payout_started_at TEXT,
+                    completed_at TEXT,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(customer_id) REFERENCES customers(id)
+                )
+                """
+            )
+            order_columns = {row[1] for row in con.execute("PRAGMA table_info(orders_v2)").fetchall()}
+            for column, declaration in {
+                "payer_match_source": "TEXT",
+                "payer_phone_candidates": "TEXT",
+                "payment_raw_summary": "TEXT",
+            }.items():
+                if column not in order_columns:
+                    con.execute(f"ALTER TABLE orders_v2 ADD COLUMN {column} {declaration}")
+            con.execute("CREATE INDEX IF NOT EXISTS idx_orders_v2_status ON orders_v2(status)")
+            con.execute("CREATE INDEX IF NOT EXISTS idx_orders_v2_customer ON orders_v2(customer_id)")
+            con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    actor_tg_id INTEGER,
+                    actor_name TEXT,
+                    action TEXT NOT NULL,
+                    entity_type TEXT NOT NULL,
+                    entity_id TEXT,
+                    details TEXT,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+            con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS security_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    telegram_user_id INTEGER,
+                    username TEXT,
+                    event_type TEXT NOT NULL,
+                    severity TEXT NOT NULL,
+                    order_code TEXT,
+                    details TEXT,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+            con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS admin_users (
+                    telegram_id INTEGER PRIMARY KEY,
+                    display_name TEXT,
+                    username TEXT,
+                    permissions_json TEXT NOT NULL DEFAULT '[]',
+                    status TEXT NOT NULL DEFAULT 'ACTIVE',
+                    added_by INTEGER,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            con.commit()
+
+        if self.get_setting("usdt_rate_yer") is None:
+            self.set_setting("usdt_rate_yer", q2(DEFAULT_RATE))
+        if self.get_setting("sales_enabled") is None:
+            self.set_setting("sales_enabled", "1" if SALES_ENABLED_DEFAULT else "0")
+        if self.get_setting("auto_payout_enabled") is None:
+            self.set_setting("auto_payout_enabled", "1" if AUTO_PAYOUT_ENABLED_DEFAULT else "0")
+
+    # shared provider/runtime state
+    def get_provider_cache(self, cache_key: str) -> Optional[dict[str, Any]]:
+        with self.connect() as con:
+            row = con.execute(
+                "SELECT payload_json, fetched_at_epoch, updated_at FROM provider_cache WHERE cache_key=?",
+                (str(cache_key),),
+            ).fetchone()
+        if not row:
+            return None
+        try:
+            payload = json.loads(row["payload_json"] or "{}")
+        except Exception:
+            payload = {}
+        return {
+            "payload": payload,
+            "fetched_at_epoch": float(row["fetched_at_epoch"] or 0),
+            "updated_at": row["updated_at"],
+        }
+
+    def set_provider_cache(self, cache_key: str, payload: Any, fetched_at_epoch: Optional[float] = None) -> None:
+        epoch = float(time.time() if fetched_at_epoch is None else fetched_at_epoch)
+        with self.connect() as con:
+            con.execute(
+                """
+                INSERT INTO provider_cache(cache_key, payload_json, fetched_at_epoch, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(cache_key) DO UPDATE SET
+                    payload_json=excluded.payload_json,
+                    fetched_at_epoch=excluded.fetched_at_epoch,
+                    updated_at=excluded.updated_at
+                """,
+                (str(cache_key), json.dumps(payload, ensure_ascii=False, default=str), epoch, now_str()),
+            )
+            con.commit()
+
+    def delete_provider_cache(self, cache_key: str) -> None:
+        with self.connect() as con:
+            con.execute("DELETE FROM provider_cache WHERE cache_key=?", (str(cache_key),))
+            con.commit()
+
+    def upsert_runtime_instance(
+        self,
+        *,
+        instance_id: str,
+        service_name: str,
+        pid: int,
+        hostname: str = "",
+        cwd: str = "",
+        env_path: str = "",
+        db_path: str = "",
+        provider_key_fingerprint: str = "",
+        egress_ip: str = "",
+        parent_pid: int = 0,
+        stopped: bool = False,
+    ) -> None:
+        timestamp = now_str()
+        with self.connect() as con:
+            con.execute(
+                """
+                INSERT INTO runtime_instances(
+                    instance_id, service_name, pid, hostname, cwd, env_path, db_path,
+                    provider_key_fingerprint, egress_ip, parent_pid, started_at, last_seen_at, stopped_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(instance_id) DO UPDATE SET
+                    service_name=excluded.service_name, pid=excluded.pid, hostname=excluded.hostname,
+                    cwd=excluded.cwd, env_path=excluded.env_path, db_path=excluded.db_path,
+                    provider_key_fingerprint=excluded.provider_key_fingerprint, egress_ip=excluded.egress_ip,
+                    parent_pid=excluded.parent_pid, last_seen_at=excluded.last_seen_at,
+                    stopped_at=excluded.stopped_at
+                """,
+                (
+                    str(instance_id), str(service_name), int(pid), hostname or None, cwd or None,
+                    env_path or None, db_path or None, provider_key_fingerprint or None, egress_ip or None,
+                    int(parent_pid or 0), timestamp, timestamp, timestamp if stopped else None,
+                ),
+            )
+            con.commit()
+
+    # settings
+    def get_setting(self, key: str) -> Optional[str]:
+        with self.connect() as con:
+            row = con.execute("SELECT value FROM settings_v2 WHERE key = ?", (key,)).fetchone()
+        return row["value"] if row else None
+
+    def set_setting(self, key: str, value: str):
+        with self.connect() as con:
+            con.execute(
+                """
+                INSERT INTO settings_v2(key, value, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+                """,
+                (key, value, now_str()),
+            )
+            con.commit()
+
+    def get_rate(self) -> Decimal:
+        return Decimal(self.get_setting("usdt_rate_yer") or q2(DEFAULT_RATE))
+
+    def sales_enabled(self) -> bool:
+        return (self.get_setting("sales_enabled") or "1") == "1"
+
+    def set_sales_enabled(self, value: bool):
+        self.set_setting("sales_enabled", "1" if value else "0")
+
+    def auto_payout_enabled(self) -> bool:
+        return (self.get_setting("auto_payout_enabled") or "1") == "1"
+
+    def set_auto_payout_enabled(self, value: bool):
+        self.set_setting("auto_payout_enabled", "1" if value else "0")
+
+    # audit/security
+    def audit(self, actor_tg_id: Optional[int], actor_name: str, action: str, entity_type: str, entity_id: Any, details: str = ""):
+        with self.connect() as con:
+            con.execute(
+                "INSERT INTO audit_logs(actor_tg_id, actor_name, action, entity_type, entity_id, details, created_at) VALUES (?,?,?,?,?,?,?)",
+                (actor_tg_id, actor_name, action, entity_type, str(entity_id) if entity_id is not None else None, details, now_str()),
+            )
+            con.commit()
+
+    def security(self, telegram_user_id: Optional[int], username: Optional[str], event_type: str, severity: str, details: str, order_code: Optional[str] = None):
+        with self.connect() as con:
+            con.execute(
+                "INSERT INTO security_logs(telegram_user_id, username, event_type, severity, order_code, details, created_at) VALUES (?,?,?,?,?,?,?)",
+                (telegram_user_id, username, event_type, severity, order_code, details, now_str()),
+            )
+            con.commit()
+
+    def list_security_logs(self, limit: int = 20) -> list[sqlite3.Row]:
+        with self.connect() as con:
+            rows = con.execute("SELECT * FROM security_logs ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+        return rows
+
+    # admins
+    def get_admin(self, telegram_id: int) -> Optional[sqlite3.Row]:
+        with self.connect() as con:
+            return con.execute("SELECT * FROM admin_users WHERE telegram_id = ?", (int(telegram_id),)).fetchone()
+
+    def list_admins(self) -> list[sqlite3.Row]:
+        with self.connect() as con:
+            return con.execute("SELECT * FROM admin_users ORDER BY created_at DESC").fetchall()
+
+    def is_admin(self, telegram_id: int) -> bool:
+        if int(telegram_id) == int(ADMIN_ID):
+            return True
+        row = self.get_admin(telegram_id)
+        return bool(row and row["status"] == "ACTIVE")
+
+    def get_admin_permissions(self, telegram_id: int) -> set[str]:
+        if int(telegram_id) == int(ADMIN_ID):
+            return set(ALL_ADMIN_PERMISSIONS) | {"admins_manage"}
+        row = self.get_admin(telegram_id)
+        if not row or row["status"] != "ACTIVE":
+            return set()
+        try:
+            permissions = json.loads(row["permissions_json"] or "[]")
+        except Exception:
+            log.exception("Invalid admin permissions JSON telegram_id=%s", telegram_id)
+            permissions = []
+        return {str(item) for item in permissions if str(item) in ADMIN_PERMISSION_LABELS}
+
+    def has_permission(self, telegram_id: int, permission: str) -> bool:
+        if int(telegram_id) == int(ADMIN_ID):
+            return True
+        if permission == "admins_manage":
+            return False
+        return permission in self.get_admin_permissions(telegram_id)
+
+    def create_admin(
+        self,
+        telegram_id: int,
+        display_name: str,
+        username: str,
+        permissions: set[str],
+        added_by: int,
+    ):
+        clean = sorted(set(permissions).intersection(ALL_ADMIN_PERMISSIONS))
+        with self.connect() as con:
+            con.execute(
+                """
+                INSERT INTO admin_users(
+                    telegram_id, display_name, username, permissions_json,
+                    status, added_by, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, 'ACTIVE', ?, ?, ?)
+                """,
+                (
+                    int(telegram_id), display_name.strip(), username.strip().lstrip("@") or None,
+                    json.dumps(clean, ensure_ascii=False), int(added_by), now_str(), now_str(),
+                ),
+            )
+            con.commit()
+
+    def update_admin_permissions(self, telegram_id: int, permissions: set[str]):
+        clean = sorted(set(permissions).intersection(ALL_ADMIN_PERMISSIONS))
+        with self.connect() as con:
+            con.execute(
+                "UPDATE admin_users SET permissions_json = ?, updated_at = ? WHERE telegram_id = ?",
+                (json.dumps(clean, ensure_ascii=False), now_str(), int(telegram_id)),
+            )
+            con.commit()
+
+    def set_admin_status(self, telegram_id: int, status: str):
+        with self.connect() as con:
+            con.execute(
+                "UPDATE admin_users SET status = ?, updated_at = ? WHERE telegram_id = ?",
+                (status, now_str(), int(telegram_id)),
+            )
+            con.commit()
+
+    def delete_admin(self, telegram_id: int):
+        with self.connect() as con:
+            con.execute("DELETE FROM admin_users WHERE telegram_id = ?", (int(telegram_id),))
+            con.commit()
+
+    # customers
+    def create_customer(self, full_name: str, phone_primary: str, phone_alt: str = "", telegram_id: Optional[int] = None, telegram_username: str = "", notes: str = "", added_by: Optional[int] = None) -> int:
+        with self.connect() as con:
+            cur = con.execute(
+                """
+                INSERT INTO customers(full_name, phone_primary, phone_alt, telegram_id, telegram_username, status, notes, added_by, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?, ?)
+                """,
+                (full_name.strip(), normalize_phone(phone_primary), normalize_phone(phone_alt), telegram_id, telegram_username or None, notes.strip(), added_by, now_str(), now_str()),
+            )
+            con.commit()
+            return int(cur.lastrowid)
+
+    def get_customer(self, customer_id: int) -> Optional[sqlite3.Row]:
+        with self.connect() as con:
+            row = con.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+        return row
+
+    def get_customer_by_telegram(self, telegram_id: int) -> Optional[sqlite3.Row]:
+        with self.connect() as con:
+            row = con.execute("SELECT * FROM customers WHERE telegram_id = ?", (telegram_id,)).fetchone()
+        return row
+
+    def get_customer_by_any_phone(self, phone: str, exclude_customer_id: Optional[int] = None) -> Optional[sqlite3.Row]:
+        """Find duplicate phones even when country/leading-zero formats differ."""
+        normalized = normalize_phone(phone)
+        if not normalized:
+            return None
+        sql = "SELECT * FROM customers"
+        params: list[Any] = []
+        if exclude_customer_id is not None:
+            sql += " WHERE id != ?"
+            params.append(int(exclude_customer_id))
+        with self.connect() as con:
+            rows = con.execute(sql, params).fetchall()
+        for row in rows:
+            if phones_match(normalized, row["phone_primary"]) or phones_match(normalized, row["phone_alt"]):
+                return row
+        return None
+
+    def search_customers(self, term: str, limit: int = 20) -> list[sqlite3.Row]:
+        like = f"%{term.strip()}%"
+        digits = normalize_phone(term)
+        with self.connect() as con:
+            rows = con.execute(
+                """
+                SELECT * FROM customers
+                WHERE CAST(id AS TEXT) LIKE ?
+                   OR full_name LIKE ?
+                   OR COALESCE(telegram_username,'') LIKE ?
+                   OR phone_primary LIKE ?
+                   OR COALESCE(phone_alt,'') LIKE ?
+                ORDER BY id DESC LIMIT ?
+                """,
+                (like, like, like, f"%{digits}%", f"%{digits}%", limit),
+            ).fetchall()
+        return rows
+
+    def list_customers(self, limit: int = 50) -> list[sqlite3.Row]:
+        with self.connect() as con:
+            rows = con.execute("SELECT * FROM customers ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+        return rows
+
+    def update_customer(self, customer_id: int, **fields: Any):
+        if not fields:
+            return
+        if "phone_primary" in fields:
+            fields["phone_primary"] = normalize_phone(fields["phone_primary"])
+        if "phone_alt" in fields:
+            fields["phone_alt"] = normalize_phone(fields["phone_alt"])
+        fields["updated_at"] = now_str()
+        cols = ", ".join([f"{k} = ?" for k in fields.keys()])
+        values = list(fields.values()) + [customer_id]
+        with self.connect() as con:
+            con.execute(f"UPDATE customers SET {cols} WHERE id = ?", values)
+            con.commit()
+
+    def customer_deletion_summary(self, customer_id: int) -> Optional[dict[str, Any]]:
+        with self.connect() as con:
+            customer = con.execute(
+                "SELECT * FROM customers WHERE id=?",
+                (int(customer_id),),
+            ).fetchone()
+            if not customer:
+                return None
+            telegram_id = customer["telegram_id"]
+            available = locked = Decimal("0")
+            operation_count = 0
+            if telegram_id is None:
+                wallet = con.execute(
+                    "SELECT available_balance, locked_balance FROM user_wallets WHERE customer_id=?",
+                    (int(customer_id),),
+                ).fetchone()
+            else:
+                wallet = con.execute(
+                    "SELECT available_balance, locked_balance FROM user_wallets WHERE telegram_user_id=?",
+                    (int(telegram_id),),
+                ).fetchone()
+            if wallet:
+                available = decimal_or_zero(wallet["available_balance"])
+                locked = decimal_or_zero(wallet["locked_balance"])
+            for table in ("orders_v2", "wallet_deposits", "wallet_withdrawals"):
+                exists = con.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                    (table,),
+                ).fetchone()
+                if exists:
+                    if telegram_id is None:
+                        operation_count += int(con.execute(
+                            f"SELECT COUNT(*) FROM {table} WHERE customer_id=?",
+                            (int(customer_id),),
+                        ).fetchone()[0])
+                    else:
+                        operation_count += int(con.execute(
+                            f"SELECT COUNT(*) FROM {table} WHERE telegram_user_id=? OR customer_id=?",
+                            (int(telegram_id), int(customer_id)),
+                        ).fetchone()[0])
+            return {
+                "customer": customer,
+                "telegram_id": int(telegram_id) if telegram_id is not None else None,
+                "available_balance": available,
+                "locked_balance": locked,
+                "operation_count": operation_count,
+            }
+
+    def delete_customer(self, customer_id: int) -> dict[str, int]:
+        """Permanently purge every user-owned record in one transaction."""
+        with self.connect() as con:
+            con.execute("PRAGMA foreign_keys = ON")
+            con.execute("BEGIN IMMEDIATE")
+            customer = con.execute(
+                "SELECT * FROM customers WHERE id=?",
+                (int(customer_id),),
+            ).fetchone()
+            if not customer:
+                con.rollback()
+                raise ValueError("العميل غير موجود")
+            telegram_id = customer["telegram_id"]
+            deleted: dict[str, int] = {}
+
+            def purge(table: str, where: str, params: tuple[Any, ...]) -> None:
+                exists = con.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                    (table,),
+                ).fetchone()
+                if not exists:
+                    return
+                cursor = con.execute(f"DELETE FROM {table} WHERE {where}", params)
+                deleted[table] = int(cursor.rowcount or 0)
+
+            customer_key = int(customer_id)
+            tg = int(telegram_id) if telegram_id is not None else None
+            # الجداول التابعة تُحذف قبل الجداول الأب لضمان سلامة المفاتيح الخارجية.
+            # customer_id يكفي كذلك للعملاء الذين لم يُربطوا بحساب Telegram بعد.
+            if tg is None:
+                purge("wallet_ledger", "customer_id=?", (customer_key,))
+                purge("wallet_deposits", "customer_id=?", (customer_key,))
+                purge("wallet_withdrawals", "customer_id=?", (customer_key,))
+                purge("user_wallets", "customer_id=?", (customer_key,))
+                purge("orders_v2", "customer_id=?", (customer_key,))
+                purge("account_verification_requests", "customer_id=?", (customer_key,))
+            else:
+                purge("wallet_ledger", "telegram_user_id=? OR customer_id=?", (tg, customer_key))
+                purge("wallet_notification_outbox", "telegram_user_id=?", (tg,))
+                purge("wallet_deposits", "telegram_user_id=? OR customer_id=?", (tg, customer_key))
+                purge("wallet_withdrawals", "telegram_user_id=? OR customer_id=?", (tg, customer_key))
+                purge("user_wallets", "telegram_user_id=? OR customer_id=?", (tg, customer_key))
+                purge("orders_v2", "telegram_user_id=? OR customer_id=?", (tg, customer_key))
+                purge("account_verification_requests", "telegram_id=? OR customer_id=?", (tg, customer_key))
+                purge("user_registrations", "telegram_id=?", (tg,))
+                purge("referrals", "referrer_telegram_id=? OR referred_telegram_id=?", (tg, tg))
+                purge("bot_users", "telegram_id=?", (tg,))
+                purge("webapp_action_tokens", "telegram_user_id=?", (tg,))
+                purge("liquidity_message_targets", "telegram_id=?", (tg,))
+                purge("technical_events", "telegram_user_id=?", (tg,))
+                purge("security_logs", "telegram_user_id=?", (tg,))
+                purge(
+                    "audit_logs",
+                    "actor_tg_id=? OR (entity_type='customer' AND entity_id=?) "
+                    "OR (entity_type IN ('wallet','registration','account_verification') AND entity_id=?)",
+                    (tg, str(customer_key), str(tg)),
+                )
+
+            if tg is None:
+                purge(
+                    "audit_logs",
+                    "entity_type='customer' AND entity_id=?",
+                    (str(customer_key),),
+                )
+
+            cursor = con.execute("DELETE FROM customers WHERE id=?", (customer_key,))
+            deleted["customers"] = int(cursor.rowcount or 0)
+            con.commit()
+            return deleted
+
+    # orders
+    def create_order(self, customer: sqlite3.Row, crypto_amount: Decimal, rate: Decimal, expected_yer_amount: Decimal) -> int:
+        code = f"USDT-{datetime.now().strftime('%y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
+        with self.connect() as con:
+            cur = con.execute(
+                """
+                INSERT INTO orders_v2(
+                    order_code, customer_id, telegram_user_id, telegram_username, full_name,
+                    crypto_symbol, crypto_amount, exchange_rate_yer, expected_yer_amount,
+                    payment_method, status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, 'USDT', ?, ?, ?, 'JAIB', 'WAITING_PAYMENT', ?, ?)
+                """,
+                (
+                    code,
+                    customer["id"],
+                    customer["telegram_id"],
+                    customer["telegram_username"],
+                    customer["full_name"],
+                    q8(crypto_amount),
+                    q2(rate),
+                    q2(expected_yer_amount),
+                    now_str(),
+                    now_str(),
+                ),
+            )
+            con.commit()
+            return int(cur.lastrowid)
+
+    def get_order(self, order_id: int) -> Optional[sqlite3.Row]:
+        with self.connect() as con:
+            row = con.execute("SELECT * FROM orders_v2 WHERE id = ?", (order_id,)).fetchone()
+        return row
+
+    def get_order_by_code(self, order_code: str) -> Optional[sqlite3.Row]:
+        with self.connect() as con:
+            row = con.execute("SELECT * FROM orders_v2 WHERE order_code = ?", (order_code,)).fetchone()
+        return row
+
+    def get_order_by_payment_reference(self, ref: str) -> Optional[sqlite3.Row]:
+        with self.connect() as con:
+            row = con.execute("SELECT * FROM orders_v2 WHERE payment_reference = ?", (ref,)).fetchone()
+        return row
+
+    def list_user_orders(self, telegram_user_id: int, limit: int = 10) -> list[sqlite3.Row]:
+        with self.connect() as con:
+            rows = con.execute("SELECT * FROM orders_v2 WHERE telegram_user_id = ? ORDER BY id DESC LIMIT ?", (telegram_user_id, limit)).fetchall()
+        return rows
+
+    def list_recent_orders(self, limit: int = 20) -> list[sqlite3.Row]:
+        with self.connect() as con:
+            rows = con.execute("SELECT * FROM orders_v2 ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+        return rows
+
+    def list_orders_by_status(self, statuses: tuple[str, ...]) -> list[sqlite3.Row]:
+        placeholders = ",".join(["?"] * len(statuses))
+        with self.connect() as con:
+            rows = con.execute(f"SELECT * FROM orders_v2 WHERE status IN ({placeholders}) ORDER BY id ASC", statuses).fetchall()
+        return rows
+
+    def update_order(self, order_id: int, **fields: Any):
+        if not fields:
+            return
+        fields["updated_at"] = now_str()
+        cols = ", ".join([f"{k} = ?" for k in fields.keys()])
+        values = list(fields.values()) + [order_id]
+        with self.connect() as con:
+            con.execute(f"UPDATE orders_v2 SET {cols} WHERE id = ?", values)
+            con.commit()
+
+    def mark_processing_payout(self, order_id: int) -> bool:
+        with self.connect() as con:
+            cur = con.execute(
+                """
+                UPDATE orders_v2
+                SET status = 'PROCESSING_PAYOUT', payout_started_at = ?, updated_at = ?
+                WHERE id = ? AND status = 'READY_FOR_PAYOUT'
+                """,
+                (now_str(), now_str(), order_id),
+            )
+            con.commit()
+            return cur.rowcount == 1
+
+    def stats(self) -> dict[str, Any]:
+        with self.connect() as con:
+            total_customers = con.execute("SELECT COUNT(*) c FROM customers").fetchone()["c"]
+            active_customers = con.execute("SELECT COUNT(*) c FROM customers WHERE status = 'ACTIVE'").fetchone()["c"]
+            stopped_customers = con.execute("SELECT COUNT(*) c FROM customers WHERE status = 'SUSPENDED'").fetchone()["c"]
+            successful_orders = con.execute("SELECT COUNT(*) c FROM orders_v2 WHERE status = 'COMPLETED'").fetchone()["c"]
+            rejected_orders = con.execute("SELECT COUNT(*) c FROM orders_v2 WHERE status = 'REJECTED'").fetchone()["c"]
+            total_sold = con.execute("SELECT COALESCE(SUM(CAST(crypto_amount AS REAL)),0) s FROM orders_v2 WHERE status = 'COMPLETED'").fetchone()["s"]
+            daily = con.execute("SELECT COALESCE(SUM(CAST(expected_yer_amount AS REAL)),0) s FROM orders_v2 WHERE status = 'COMPLETED' AND DATE(completed_at)=DATE('now','localtime')").fetchone()["s"]
+            weekly = con.execute("SELECT COALESCE(SUM(CAST(expected_yer_amount AS REAL)),0) s FROM orders_v2 WHERE status = 'COMPLETED' AND datetime(completed_at) >= datetime('now','-7 days','localtime')").fetchone()["s"]
+            monthly = con.execute("SELECT COALESCE(SUM(CAST(expected_yer_amount AS REAL)),0) s FROM orders_v2 WHERE status = 'COMPLETED' AND strftime('%Y-%m', completed_at)=strftime('%Y-%m','now','localtime')").fetchone()["s"]
+        return {
+            "total_customers": total_customers,
+            "active_customers": active_customers,
+            "stopped_customers": stopped_customers,
+            "successful_orders": successful_orders,
+            "rejected_orders": rejected_orders,
+            "total_sold": total_sold,
+            "daily_sales": daily,
+            "weekly_sales": weekly,
+            "monthly_sales": monthly,
+        }
+
+    def export_snapshot(self) -> dict[str, Any]:
+        with self.connect() as con:
+            customers = [dict(r) for r in con.execute("SELECT * FROM customers ORDER BY id").fetchall()]
+            orders = [dict(r) for r in con.execute("SELECT * FROM orders_v2 ORDER BY id").fetchall()]
+            audit = [dict(r) for r in con.execute("SELECT * FROM audit_logs ORDER BY id").fetchall()]
+            security = [dict(r) for r in con.execute("SELECT * FROM security_logs ORDER BY id").fetchall()]
+            settings = [dict(r) for r in con.execute("SELECT * FROM settings_v2 ORDER BY key").fetchall()]
+            admins = [dict(r) for r in con.execute("SELECT * FROM admin_users ORDER BY created_at").fetchall()]
+        return {
+            "exported_at": now_str(),
+            "settings_v2": settings,
+            "customers": customers,
+            "orders_v2": orders,
+            "audit_logs": audit,
+            "security_logs": security,
+            "admin_users": admins,
+        }
+
+    def import_snapshot(self, payload: dict[str, Any]):
+        with self.connect() as con:
+            # Full restore replaces related tables in multiple compatibility
+            # layers. Disable FK checks only for this controlled import, then
+            # run a consistency check before returning.
+            con.execute("PRAGMA foreign_keys = OFF")
+            con.execute("DELETE FROM orders_v2")
+            con.execute("DELETE FROM customers")
+            con.execute("DELETE FROM audit_logs")
+            con.execute("DELETE FROM security_logs")
+            con.execute("DELETE FROM settings_v2")
+            con.execute("DELETE FROM admin_users")
+
+            for row in payload.get("settings_v2", []):
+                con.execute("INSERT INTO settings_v2(key, value, updated_at) VALUES (?,?,?)", (row["key"], row["value"], row.get("updated_at", now_str())))
+            for row in payload.get("customers", []):
+                con.execute(
+                    "INSERT INTO customers(id, full_name, phone_primary, phone_alt, telegram_id, telegram_username, status, notes, added_by, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    (row["id"], row["full_name"], row["phone_primary"], row.get("phone_alt"), row.get("telegram_id"), row.get("telegram_username"), row.get("status", "ACTIVE"), row.get("notes"), row.get("added_by"), row.get("created_at", now_str()), row.get("updated_at", now_str())),
+                )
+            order_columns = (
+                "id", "order_code", "customer_id", "telegram_user_id", "telegram_username",
+                "full_name", "crypto_symbol", "crypto_amount", "exchange_rate_yer",
+                "expected_yer_amount", "payment_method", "payment_reference", "payer_name",
+                "payer_phone", "payer_phone_matched", "payer_match_source",
+                "payer_phone_candidates", "payment_raw_summary", "payment_raw_json",
+                "payer_display", "payer_identifiers", "review_reason",
+                "admin_reviewed_by", "admin_reviewed_at", "paid_yer_amount",
+                "delivery_type", "binance_id", "network_code", "network_label",
+                "destination_address", "payout_request_id", "binance_withdraw_id", "txid",
+                "withdraw_amount", "network_fee", "channel_notified",
+                "status", "rejection_reason", "error_message", "created_at", "paid_at",
+                "payout_started_at", "completed_at", "updated_at",
+            )
+            order_defaults = {
+                "crypto_symbol": "USDT",
+                "payment_method": "JAIB",
+                "status": "WAITING_PAYMENT",
+                "created_at": now_str(),
+                "updated_at": now_str(),
+                "channel_notified": 0,
+            }
+            placeholders = ",".join("?" for _ in order_columns)
+            column_sql = ",".join(order_columns)
+            for row in payload.get("orders_v2", []):
+                values = [row.get(column, order_defaults.get(column)) for column in order_columns]
+                con.execute(
+                    f"INSERT INTO orders_v2({column_sql}) VALUES ({placeholders})",
+                    values,
+                )
+            for row in payload.get("audit_logs", []):
+                con.execute("INSERT INTO audit_logs(id, actor_tg_id, actor_name, action, entity_type, entity_id, details, created_at) VALUES (?,?,?,?,?,?,?,?)", (row["id"], row.get("actor_tg_id"), row.get("actor_name"), row["action"], row["entity_type"], row.get("entity_id"), row.get("details"), row.get("created_at", now_str())))
+            for row in payload.get("security_logs", []):
+                con.execute("INSERT INTO security_logs(id, telegram_user_id, username, event_type, severity, order_code, details, created_at) VALUES (?,?,?,?,?,?,?,?)", (row["id"], row.get("telegram_user_id"), row.get("username"), row["event_type"], row["severity"], row.get("order_code"), row.get("details"), row.get("created_at", now_str())))
+            for row in payload.get("admin_users", []):
+                con.execute(
+                    """
+                    INSERT INTO admin_users(
+                        telegram_id, display_name, username, permissions_json,
+                        status, added_by, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        row["telegram_id"], row.get("display_name"), row.get("username"),
+                        row.get("permissions_json", "[]"), row.get("status", "ACTIVE"),
+                        row.get("added_by"), row.get("created_at", now_str()),
+                        row.get("updated_at", now_str()),
+                    ),
+                )
+            con.commit()
+            con.execute("PRAGMA foreign_keys = ON")
+
+
+DBX = DB(DB_FILE)
+
+
+
+_export_globals(globals())

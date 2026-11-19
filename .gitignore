@@ -1,0 +1,30 @@
+# Secrets and local configuration
+.env
+
+# Runtime databases and logs
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.log
+*.log.*
+*.jsonl
+*.jsonl.*
+
+# Python environments and caches
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Generated files
+backups/*
+!backups/.gitkeep
+exports/*
+!exports/.gitkeep
+*.zip
+
+# Local process locks and runtime identity files
+.runtime/

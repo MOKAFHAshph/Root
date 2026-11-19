@@ -1,0 +1,22 @@
+{
+  "backups": [
+    [
+      "bot/app.py",
+      "bot/app.py.customize-20261106T221034Z.bak"
+    ],
+    [
+      "bot/application.py",
+      "bot/application.py.customize-20261106T221034Z.bak"
+    ]
+  ],
+  "added": [
+    "bot/ui/menu_view.py",
+    "bot/services/menu_customization.py"
+  ],
+  "installed": [
+    "bot/app.py",
+    "bot/application.py",
+    "bot/ui/menu_view.py",
+    "bot/services/menu_customization.py"
+  ]
+}

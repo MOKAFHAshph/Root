@@ -1,0 +1,59 @@
+"""Deterministic module loader for the modularized bot."""
+from __future__ import annotations
+
+from importlib import import_module
+from typing import Callable
+
+from bot import runtime
+
+_MODULE_ORDER = (
+    "bot.config",
+    "bot.utils",
+    "bot.database",
+    "bot.providers.jaib",
+    "bot.providers.binance",
+    "bot.ui.keyboards",
+    "bot.services.orders",
+    "bot.services.backups",
+    "bot.handlers.callbacks",
+    "bot.handlers.text",
+    "bot.services.registration_payment",
+    "bot.services.admin_communication",
+    "bot.services.payout_operations",
+    "bot.handlers.stability",
+    "bot.providers.payouts",
+    "bot.ui.trusted",
+    "bot.wallet.core",
+    "bot.services.liquidity",
+    "bot.wallet.deposits",
+    "bot.wallet.withdrawals",
+    "bot.wallet.statistics",
+    "bot.logging.technical",
+    "bot.providers.binance_wallet",
+    "bot.wallet.deposit_verification",
+    "bot.ui.wallet",
+    "bot.admin.wallet",
+    "bot.handlers.wallet_callbacks",
+    "bot.handlers.wallet_text",
+    "bot.services.registration_flow",
+    "bot.services.account_verification",
+    "bot.services.rate_notifications",
+    "bot.services.dynamic_withdrawals",
+    "bot.services.pdf_reports",
+    "bot.services.user_reporting",
+    "bot.services.full_backup",
+    "bot.services.backup_automation",
+    "bot.services.log_management",
+    "bot.services.v18_features",
+    "bot.services.v18_2_features",
+    "bot.services.upgrade",
+    "bot.services.wallet20",
+    "bot.services.jaib20",
+    "bot.services.bot_design",
+    "bot.application",
+)
+for module_name in _MODULE_ORDER:
+    import_module(module_name)
+
+runtime.sync_all()
+main: Callable[[], None] = runtime.get("main")

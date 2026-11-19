@@ -1,0 +1,16 @@
+{
+  "backups": [
+    [
+      "bot/ui/menu_view.py",
+      "bot/ui/menu_view.py.visual-20261106T230707Z.bak"
+    ],
+    [
+      "bot/services/menu_customization.py",
+      "bot/services/menu_customization.py.visual-20261106T230707Z.bak"
+    ]
+  ],
+  "installed": {
+    "bot/ui/menu_view.py": "c3f6722824be019ca971647adbffaa32a91f30690bb3f21733cc0832280aaf1b",
+    "bot/services/menu_customization.py": "36be1bb9c0697cc5527ceb920c75822f5550486888f4dfa77560f874f4c3c40b"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "version": "JAIB_SECURE_CONFIG_V1",
+  "previous": {
+    "bot/application.py": "9824668547ac96dcadffde4f8a2bce54ae479558e8a62595dbf70adf6473c64b",
+    "bot/services/admin_communication.py": "76656b69ae764fedb4c2a08e85df732a1cbc86729dcc90f8ac1bb5f64e45235c",
+    "bot/providers/jaib.py": "83612bb68da0e3e209b309bf2915a43c664f1364b13447c372a11772fde3318e",
+    "webapp_main.py": "cf9ceeabefd7cbe9766a8ec7a09a7770a9b9d6e91925882586979692b0fc06ee",
+    "bot/admin/jaib_config_launcher.py": null,
+    "bot/webapp/jaib_config_admin.py": null,
+    "bot/webapp/jaib_config_admin.html": null
+  },
+  "installed": {
+    "bot/application.py": "ad56f142508a8c87617b2234b654fdb7d34936ec07cdff69536e47c238b2b9d9",
+    "bot/services/admin_communication.py": "e82d8d31a49428c1c7845b48779292bc45d8f27985e760ff0ec3219d6e243d2f",
+    "bot/providers/jaib.py": "c4472e929414b364c68fbd9195ed01b3c46926e10a7cd1cd6e05ca4de8a2f13f",
+    "webapp_main.py": "c9ddacab051f8b13dab54fcb35e07d46e9ffd337f8e2b605dc55b1752c94d96a",
+    "bot/admin/jaib_config_launcher.py": "67d521cc5b012f357695a2685b0cd8f5ef6727653d6fc843a64504d353445877",
+    "bot/webapp/jaib_config_admin.py": "72a3dcae4fcf38adf608fba1512c57437b08d9f1a03eaa872677c79d339c79a2",
+    "bot/webapp/jaib_config_admin.html": "e3d747bdf49df2703e569623df88aa12d15476af699d0f97edc949a72c4fa27c"
+  }
+}

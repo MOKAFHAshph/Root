@@ -1,0 +1,300 @@
+"""PURE presentation helpers. Never imported by financial validations.
+
+No source credentials, balances from payment ledgers, transactions or signing
+methods are used here. Values are for display only.
+"""
+from __future__ import annotations
+import copy
+import html
+import re
+from datetime import datetime, timezone, timedelta
+from decimal import Decimal, ROUND_FLOOR, InvalidOperation
+
+EMOJI_DEFAULTS = {
+    "bep20": ("5972302164259773674", "💵"),
+    "ton_usdt": ("5969861793906954915", "💎"),
+    "updating": ("5854736264984531537", "⏳"),
+    "completed": ("5861665979968262792", "✅"),
+}
+STATUS_ICON_DEFAULTS = {
+    "deposit_title": {"emoji_id": "5897909375028172264", "fallback": "💳"},
+    "deposit_wait": {"emoji_id": "5855132767775364089", "fallback": "⏳"},
+    "withdraw_wait_bep20": {"emoji_id": "5857262036467061599", "fallback": "⏳"},
+    "withdraw_wait_ton": {"emoji_id": "5857262036467061599", "fallback": "⏳"},
+    "success_bep20": {"emoji_id": "5861665979968262792", "fallback": "✅"},
+    "success_ton": {"emoji_id": "5857150633605337384", "fallback": "✅"},
+}
+STATUS_ICON_LABELS = {
+    "deposit_title": "شعار الإيداع عبر جيب",
+    "deposit_wait": "التحقق من رقم عملية جيب",
+    "withdraw_wait_bep20": "جاري سحب BEP20",
+    "withdraw_wait_ton": "جاري سحب TON",
+    "success_bep20": "نجاح الإيداع / BEP20",
+    "success_ton": "نجاح السحب عبر TON",
+}
+NETWORK_IDS = ("USDT_BEP20", "USDT_TON", "TON_NATIVE")
+VALID_STYLES = ("", "primary", "success", "danger")
+TEXT_DEFAULTS = {
+    "title": "USDT Wallet",
+    "balance_heading": "رصيدك | Your balance",
+    "withdraw_heading": "السحب | Withdraw",
+    "zero_fee_line": "يتحمل البوت رسوم السحب",
+    "updating_text": "جاري التحديث...",
+    "payment_customer": "تمت العملية بنجاح",
+    "payment_admin": "اكتملت العملية بنجاح",
+    "payment_channel": "تم الدفع بنجاح",
+    "footer": "تأكد من اختيار الشبكة الصحيحة قبل السحب.",
+    "deposit_title": "إيداع عبر محفظة جيب",
+    "deposit_instructions": "حوّل من محفظتك الشخصية المسجلة ثم أرسل رقم العملية الصحيح فقط.",
+    "deposit_policy": "التحويل من طرف ثالث غير مقبول. يجب أن يكون المرسل صاحب الحساب الشخصي المطابق لبيانات العميل، ولا تُقبل أرقام العمليات الخاطئة.",
+    "deposit_wait_text": "جارٍ التحقق من رقم العملية عبر جيب. يرجى الانتظار وعدم إعادة إرسال الرقم.",
+    "withdraw_address_wait": "جارٍ التحقق من صحة عنوان الاستلام والشبكة، يرجى الانتظار.",
+    "withdraw_processing_text": "تم استلام طلبك ويجري التنفيذ والتحقق من الشبكة. سيصلك إشعار بالنتيجة؛ لا تكرر الطلب.",
+}
+
+def defaults(maximum="100"):
+    try: maximum = str(Decimal(str(maximum)))
+    except (InvalidOperation, TypeError, ValueError): maximum = "100"
+    return {
+        "version": 2,
+        "networks": {
+            "USDT_BEP20": {"visible": True, "name": "USDT — BEP20", "style": "primary", "emoji_id": EMOJI_DEFAULTS["bep20"][0], "fallback": EMOJI_DEFAULTS["bep20"][1]},
+            "USDT_TON": {"visible": True, "name": "USDT — TON", "style": "success", "emoji_id": EMOJI_DEFAULTS["ton_usdt"][0], "fallback": EMOJI_DEFAULTS["ton_usdt"][1]},
+            "TON_NATIVE": {"visible": False, "name": "TON الأصلي", "style": "primary", "emoji_id": "", "fallback": "🔵"},
+        },
+        "texts": dict(TEXT_DEFAULTS),
+        "buttons": {
+            "deposit": {"text": "إيداع USDT", "style": "success",
+                        "emoji_id": "5897909375028172264", "fallback": "💳"},
+        },
+        "privacy": {"threshold": maximum, "tiers_enabled": False, "tiers": ["100", "500", "1000"], "mark": "🟢", "format": "+${amount}"},
+        "rich_enabled": True,
+        "status_icons": copy.deepcopy(STATUS_ICON_DEFAULTS),
+        "emoji_library": [
+            {"name":"شعار جيب", "id":"5897909375028172264", "fallback":"💳"},
+            {"name":"BEP20", "id":EMOJI_DEFAULTS["bep20"][0], "fallback":EMOJI_DEFAULTS["bep20"][1]},
+            {"name":"سحب TON", "id":EMOJI_DEFAULTS["ton_usdt"][0], "fallback":EMOJI_DEFAULTS["ton_usdt"][1]},
+            {"name":"التحديث", "id":EMOJI_DEFAULTS["updating"][0], "fallback":EMOJI_DEFAULTS["updating"][1]},
+            {"name":"اكتمال الدفع", "id":EMOJI_DEFAULTS["completed"][0], "fallback":EMOJI_DEFAULTS["completed"][1]},
+        ],
+        "updating_emoji_id": EMOJI_DEFAULTS["updating"][0],
+        "updating_fallback": EMOJI_DEFAULTS["updating"][1],
+        "completed_emoji_id": EMOJI_DEFAULTS["completed"][0],
+        "completed_fallback": EMOJI_DEFAULTS["completed"][1],
+    }
+
+def decimal(value):
+    try:
+        result = Decimal(str(value))
+        if not result.is_finite() or result < 0: return None
+        return result
+    except (InvalidOperation, TypeError, ValueError): return None
+
+def floor_money(value):
+    n = decimal(value)
+    return f"${int(n.to_integral_value(rounding=ROUND_FLOOR)):,}" if n is not None else "غير متاح"
+
+def privacy_amount(value, config):
+    n=decimal(value)
+    if n is None: return "غير متاح مؤقتاً"
+    p=config["privacy"]
+    th=decimal(p["threshold"]) or Decimal("100")
+    if n < th: return floor_money(n)
+    display=th
+    if p["tiers_enabled"]:
+        for raw in p["tiers"]:
+            tier=decimal(raw)
+            if tier is not None and tier >= th and n >= tier:
+                display=tier
+    amount=f"{int(display):,}"
+    try: label=p["format"].replace("{amount}", amount)
+    except (TypeError, KeyError):label=f"+${amount}"
+    return f"{p['mark']} {label}".strip()
+
+def config_for_use(data, ceiling="100"):
+    default=defaults(ceiling)
+    if not isinstance(data, dict):return default
+    # No arbitrary keys from old presentation design are imported.
+    try:
+        for name in NETWORK_IDS:
+            obj=data.get("networks",{}).get(name,{})
+            if not isinstance(obj,dict):continue
+            for key in ("visible","name","style","emoji_id","fallback"):
+                if key in obj:default["networks"][name][key]=obj[key]
+        for key in TEXT_DEFAULTS:
+            if key in data.get("texts",{}):
+                value=data["texts"][key]
+                # Migrate only old stock labels, never overwrite user-customized texts.
+                if key=='title' and value=='💎 محفظة USDT':value=TEXT_DEFAULTS[key]
+                if key=='zero_fee_line' and value=='سحب بدون عمولة منّا':value=TEXT_DEFAULTS[key]
+                default["texts"][key]=value
+        for item in default["buttons"]:
+            saved=data.get("buttons",{}).get(item,{})
+            if isinstance(saved,dict):
+                for key in ("text","style","emoji_id","fallback"):
+                    if key in saved: default["buttons"][item][key]=saved[key]
+        for key in default["privacy"]:
+            if key in data.get("privacy",{}):default["privacy"][key]=data["privacy"][key]
+        saved_icons = data.get('status_icons', {})
+        if isinstance(saved_icons, dict):
+            for key in STATUS_ICON_DEFAULTS:
+                item = saved_icons.get(key)
+                if isinstance(item, dict):
+                    for attr in ('emoji_id', 'fallback'):
+                        if attr in item: default['status_icons'][key][attr] = item[attr]
+        for key in ("rich_enabled","emoji_library","updating_emoji_id","updating_fallback","completed_emoji_id","completed_fallback"):
+            if key in data:default[key]=data[key]
+    except (KeyError,TypeError,AttributeError):return defaults(ceiling)
+    try: validate(default)
+    except ValueError:return defaults(ceiling)
+    return default
+
+def valid_emoji_id(v):
+    return v=="" or (isinstance(v,str) and v.isdecimal() and 10 <= len(v) <= 25)
+
+def validate(cfg):
+    if not isinstance(cfg.get("rich_enabled"),bool):raise ValueError("حالة الرسائل الغنية غير صالحة")
+    for key in NETWORK_IDS:
+        net=cfg["networks"][key]
+        if not isinstance(net["visible"],bool) or not 1<=len(str(net["name"]).strip())<=36:raise ValueError("اسم الشبكة أو ظهورها غير صالح")
+        if net["style"] not in VALID_STYLES:raise ValueError("لون الزر غير صالح")
+        if not valid_emoji_id(net["emoji_id"]) or not 1<=len(str(net["fallback"]))<=8:raise ValueError("معرّف أو رمز الإيموجي غير صالح")
+        if re.search(r'[<>\r\n]',str(net["name"])):raise ValueError("اسم الشبكة لا يقبل وسوم HTML أو أسطراً متعددة")
+    for name, button in cfg["buttons"].items():
+        if name!='deposit':raise ValueError('زر غير معروف')
+        if not isinstance(button["text"],str) or not 1<=len(button["text"].strip())<=38 or re.search(r'[<>\r\n]',button["text"]):
+            raise ValueError('اسم زر الإيداع غير صالح')
+        if button["style"] not in VALID_STYLES or not valid_emoji_id(button["emoji_id"]) or not 1<=len(str(button["fallback"]))<=8:
+            raise ValueError('لون أو رمز زر الإيداع غير صالح')
+    for key in TEXT_DEFAULTS:
+        value=cfg["texts"][key]
+        if not isinstance(value,str) or not value.strip() or len(value)>250:raise ValueError("النص فارغ أو طويل جداً")
+        if re.search(r'[<>]',value):raise ValueError("النص لا يقبل وسوم HTML")
+    p=cfg["privacy"]
+    th=decimal(p["threshold"])
+    if th is None or th <= 0 or th > 1000000:raise ValueError("الحد يجب أن يكون أكبر من صفر")
+    if not isinstance(p["tiers_enabled"],bool):raise ValueError("إعداد المستويات غير صالح")
+    tiers=[decimal(x) for x in p["tiers"]]
+    if len(tiers)!=3 or any(n is None or n<=0 for n in tiers) or tiers!=sorted(tiers):raise ValueError("المستويات غير صالحة أو غير مرتبة")
+    if not isinstance(p["mark"],str) or len(p["mark"])>8 or '<' in p["mark"]:raise ValueError("علامة الحد غير صالحة")
+    if not isinstance(p["format"],str) or p["format"].count("{amount}")!=1 or len(p["format"])>40 or re.search(r'[<>\n\r]',p["format"]):raise ValueError("صيغة الخصوصية يجب أن تحتوي {amount} مرة واحدة")
+    for key, item in cfg['status_icons'].items():
+        if key not in STATUS_ICON_DEFAULTS or not isinstance(item, dict):
+            raise ValueError('حالة رمز عملية غير معروفة')
+        if not valid_emoji_id(item.get('emoji_id')) or not isinstance(item.get('fallback'), str) or not 1 <= len(item['fallback']) <= 8 or re.search(r'[<>\r\n]', item['fallback']):
+            raise ValueError('معرّف أو بديل رمز العملية غير صالح')
+    if not valid_emoji_id(cfg["updating_emoji_id"]) or not valid_emoji_id(cfg["completed_emoji_id"]):raise ValueError("معرّف الإيموجي غير صالح")
+    if any(not isinstance(cfg[k],str) or not 1<=len(cfg[k])<=8 for k in ('updating_fallback','completed_fallback')):raise ValueError('رمز بديل غير صالح')
+    if len(cfg.get("emoji_library",[]))>40:raise ValueError("مكتبة الرموز ممتلئة")
+    for item in cfg["emoji_library"]:
+        if not isinstance(item,dict) or not valid_emoji_id(item.get("id")) or not item.get("id") or not 1<=len(str(item.get("name","")))<=32:raise ValueError("عنصر مكتبة الإيموجي غير صالح")
+    return True
+
+def view_rows(snapshot, cfg, *, source_errors=()):
+    known = {(str(i.get("asset","")).upper(), str(i.get("network","")).upper()):i for i in (snapshot or {}).get("items",[])}
+    misses=set(source_errors)
+    mapping=[("USDT_BEP20","USDT","BEP20","binance"),("USDT_TON","USDT","TON","ton"),("TON_NATIVE","TON","TON","ton")]
+    rows=[]
+    for key,asset,network,source in mapping:
+        n=cfg["networks"][key]
+        if not n["visible"]:continue
+        item=known.get((asset,network))
+        if item is not None:
+            amount=decimal(item.get("usd"))
+            value=privacy_amount(amount,cfg)
+            actual=str(amount) if amount is not None else None
+        else:
+            value="غير متاح مؤقتاً" if source in misses else "غير متاح"
+            actual=None
+        rows.append({"key":key,"name":n["name"],"value":value,"real_usd":actual,"style":n["style"],"emoji_id":n["emoji_id"],"fallback":n["fallback"]})
+    return rows
+
+def esc(x): return html.escape(str(x),quote=False)
+
+def short_customer_name(raw_name, telegram_name=''):
+    """Use only the first and last meaningful words once, never duplicate identity lines."""
+    words=(str(raw_name or '').strip() or str(telegram_name or '').strip()).split()
+    return ' '.join([words[0], words[-1]]) if len(words)>1 else (words[0] if words else 'عميلنا')
+
+
+def minimum_usd_label(value):
+    """Format a network's existing USDT minimum with a dollar sign, display only."""
+    text=str(value or '').strip()
+    if not text or text in ('—','غير متاح'):return text or 'غير متاح'
+    try:
+        amount=Decimal(text.split()[0].replace(',','').replace('$',''))
+        if not amount.is_finite() or amount < 0:return 'غير متاح'
+        amount_text=format(amount.normalize(),'f')
+        whole,dot,fraction=amount_text.partition('.')
+        return '$'+format(int(whole),',')+(dot+fraction if dot else '')
+    except (InvalidOperation,ValueError,IndexError):return 'غير متاح'
+
+
+def network_icon_html(row, use_custom=True):
+    fallback=esc(row.get('fallback','💠'))
+    emoji_id=row.get('emoji_id','')
+    if use_custom and valid_emoji_id(emoji_id) and emoji_id:
+        return '<tg-emoji emoji-id="'+esc(emoji_id)+'">'+fallback+'</tg-emoji>'
+    return fallback
+
+
+def today_operation_rows(rows, now=None):
+    """Database's naive timestamps are UTC; compare to today's Yemen (+03) date."""
+    tz=timezone(timedelta(hours=3))
+    today=(now or datetime.now(timezone.utc)).astimezone(tz).date()
+    result=[]
+    for row in rows:
+        raw=row.get('created_at')
+        if not raw:continue
+        try:
+            when=datetime.fromisoformat(str(raw).strip().replace('Z','+00:00'))
+            if when.tzinfo is None:when=when.replace(tzinfo=timezone.utc)
+            if when.astimezone(tz).date()==today:result.append(row)
+        except (TypeError,ValueError,OverflowError):continue
+    return result
+
+
+def event_time_yemen(raw):
+    try:
+        val=datetime.fromisoformat(str(raw).strip().replace('Z','+00:00'))
+        if val.tzinfo is None:val=val.replace(tzinfo=timezone.utc)
+        return val.astimezone(timezone(timedelta(hours=3))).strftime('%Y-%m-%d %H:%M')
+    except (TypeError,ValueError,OverflowError):return '—'
+
+
+def render_classic(cfg, customer_name, available, locked, rows, minimums, ceiling, exchange_rate, *, show_max=True, customer_full_name="", use_custom_emoji=True):
+    t=cfg["texts"]
+    parts=[f"<b>{esc(t['title'])}</b>",f"أهلاً <b>{esc(short_customer_name(customer_full_name,customer_name))}</b>"]
+    parts.extend([f"<b>{esc(t['balance_heading'])}</b>",
+         f"<blockquote>💰 المتاح: <b>{esc(available)} USDT</b>\n🔒 المحجوز: <b>{esc(locked)} USDT</b></blockquote>",
+         f"<b>{esc(t['withdraw_heading'])}</b>","<b>الشبكة | أقل سحب | السيولة</b>"])
+    for r in rows:
+        min_val=minimum_usd_label(minimums.get(r['key'],'—'))
+        parts.append(f"{network_icon_html(r,use_custom_emoji)} <b>{esc(r['name'])}</b> | {esc(min_val)} | <b>{esc(r['value'])}</b>")
+    if show_max:parts.append(f"📈 الحد الأقصى للعملية: <b>{esc(ceiling)} USDT</b>")
+    parts += [f"💱 سعر الصرف: <b>{esc(exchange_rate)} YER = 1 USDT</b>",
+         "⚡ الدفع عبر Jaib: تلقائي وفوري",f"<blockquote>{esc(t['zero_fee_line'])}</blockquote>",
+         f"<i>{esc(t['footer'])}</i>"]
+    return "\n".join(parts)
+
+def render_rich(cfg, customer_name, available, locked, rows, minimums, ceiling, exchange_rate, *, show_max=True, customer_full_name=""):
+    t=cfg["texts"]
+    block=lambda content:{'type':'paragraph','text':str(content)}
+    head=lambda content,size:{'type':'heading','text':str(content),'size':size}
+    cells=[[{'text':'الشبكة','is_header':True},{'text':'أقل سحب','is_header':True},{'text':'السيولة','is_header':True}]]
+    for r in rows:
+        if valid_emoji_id(r.get('emoji_id','')) and r.get('emoji_id'):
+            symbol={'type':'custom_emoji','custom_emoji_id':r['emoji_id'], 'alternative_text':r['fallback']}
+            label=[symbol,' '+r['name']]
+        else:
+            label=r['fallback']+' '+r['name']
+        cells.append([{'text':label},{'text':minimum_usd_label(minimums.get(r['key'],'—'))},{'text':r['value']}])
+    blocks=[head(t['title'],1),block('أهلاً '+short_customer_name(customer_full_name,customer_name))]
+    blocks += [head(t['balance_heading'],3),{'type':'blockquote','blocks':[block('💰 المتاح: '+str(available)+' USDT'),block('🔒 المحجوز: '+str(locked)+' USDT')]},
+        {'type':'divider'},head(t['withdraw_heading'],3),{'type':'table','cells':cells,'is_compact':True}]
+    if show_max:blocks.append(block('📈 الحد الأقصى للعملية: '+str(ceiling)+' USDT'))
+    blocks += [block('💱 سعر الصرف: '+str(exchange_rate)+' YER = 1 USDT'),
+        block('⚡ الدفع عبر Jaib: تلقائي وفوري'),
+        {'type':'blockquote','blocks':[block(t['zero_fee_line'])]},
+        {'type':'footer','text':t['footer']}]
+    return {'blocks':blocks,'is_rtl':True}

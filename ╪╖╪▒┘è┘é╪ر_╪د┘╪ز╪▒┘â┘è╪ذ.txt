@@ -1,0 +1,37 @@
+تحديث واجهة Mini App + إرسال التقرير إلى البوت
+===============================================
+
+الملفات المعدلة فقط:
+- bot/webapp/static/index.html
+- bot/webapp/server.py
+
+المزايا:
+- اعتماد لون محفظة جيب الأحمر بدل البرتقالي.
+- زر «إيداع جيب» مع شعار جيب المرفق.
+- وضع ليلي/نهاري يتبع Telegram أو نظام المستخدم تلقائيًا عند أول فتح.
+- زر أعلى الواجهة للتبديل اليدوي، ويحفظ اختيار المستخدم.
+- زر التقرير ينشئ PDF ويرسله إلى محادثة المستخدم مع البوت.
+- إبقاء مسار تنزيل التقرير القديم متاحًا في الخادم.
+
+طريقة التركيب على VPS:
+1) أوقف الخدمة:
+   systemctl stop jaib
+
+2) خذ نسخة احتياطية:
+   cp /root/o/bot/webapp/static/index.html /root/o/bot/webapp/static/index.html.bak
+   cp /root/o/bot/webapp/server.py /root/o/bot/webapp/server.py.bak
+
+3) استبدل الملفين بنفس المسارات عبر SFTP.
+
+4) افحص Python:
+   cd /root/o
+   ./.venv/bin/python3 -m py_compile bot/webapp/server.py
+
+5) شغّل الخدمة:
+   systemctl restart jaib
+   sleep 5
+   systemctl status jaib --no-pager
+
+6) عند فشل إرسال التقرير افتح البوت واضغط /start ثم أعد المحاولة.
+
+لا تستبدل .env أو قاعدة البيانات.

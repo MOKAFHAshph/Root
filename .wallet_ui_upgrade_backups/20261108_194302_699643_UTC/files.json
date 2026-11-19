@@ -1,0 +1,10 @@
+{
+  "bot/handlers/wallet_callbacks.py": {
+    "existed": true,
+    "installed_sha256": "f0ffbf0577d73b647d091aab627c161afa3ad9a37d74a05013790b77e03aca91"
+  },
+  "bot/ui/deposit_rich.py": {
+    "existed": false,
+    "installed_sha256": "d1fb5cf7ed0615cf31d5a9c90d01a4cade205f26da16a548ae38e01740d0dc4f"
+  }
+}

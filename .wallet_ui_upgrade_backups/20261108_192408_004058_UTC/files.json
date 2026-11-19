@@ -1,0 +1,46 @@
+{
+  "bot/handlers/wallet_text.py": {
+    "existed": true,
+    "installed_sha256": "0d378c83d2dca8c84c9a136696b79ab4dbf3a66e28698423ab8a3b8c21d0381a"
+  },
+  "bot/handlers/wallet_callbacks.py": {
+    "existed": true,
+    "installed_sha256": "3d69b472524dd34b7ca1b027053bd3c31d95d4e70c16b268abb38ddd73a2a3df"
+  },
+  "bot/wallet/deposits.py": {
+    "existed": true,
+    "installed_sha256": "e71ce69e51176b410753830f9dc674a62a09c0aa76a67c4b8a89266aeed3895a"
+  },
+  "bot/wallet/withdrawals.py": {
+    "existed": true,
+    "installed_sha256": "5609441aa44e39011f3cfef607dc5bccceef248d3409ffba2b910fde250bbe77"
+  },
+  "bot/wallet/deposit_verification.py": {
+    "existed": true,
+    "installed_sha256": "101981f54a89ea693dae05c2583bf7025f4ca2079e0541816fd0845da25a490a"
+  },
+  "bot/wallet/core.py": {
+    "existed": true,
+    "installed_sha256": "23343b948da4cd6bde3b150a6272ca76d2ce6db423a567dfd1bd620552ef3dc2"
+  },
+  "bot/services/menu_customization.py": {
+    "existed": true,
+    "installed_sha256": "f740352d7b33b3dec72964df93a7753b6de8ea2bbbc4516010f38fe8f0f50d71"
+  },
+  "bot/ui/menu_view.py": {
+    "existed": true,
+    "installed_sha256": "c442988963feecd58b1d00a65681454e2133846c5ae686780da379ee9efd4819"
+  },
+  "bot/ui/status_icons.py": {
+    "existed": false,
+    "installed_sha256": "423ae1adf5829a5669c93b75bfa3143edfe5a19534009b22eed7dc2a5d47dd49"
+  },
+  "bot/providers/binance_wallet.py": {
+    "existed": true,
+    "installed_sha256": "2e9090ba7b09a282e5848f2d18319afc762587e55d03d73f6d436b8ab67c0c82"
+  },
+  "bot/providers/payouts.py": {
+    "existed": true,
+    "installed_sha256": "75a4863fc213cd104655ea9c893cc7c7c2b521dcb0e463080fa2ef421b993df6"
+  }
+}

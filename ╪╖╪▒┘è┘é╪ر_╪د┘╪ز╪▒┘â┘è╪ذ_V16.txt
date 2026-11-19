@@ -1,0 +1,45 @@
+طريقة تركيب تحديث V16
+========================
+
+1) أوقف جميع نسخ المشروع قبل الاستبدال. على Windows يمكن فحصها عبر PowerShell:
+
+Get-CimInstance Win32_Process | Where-Object {
+  $_.Name -match "^python" -and $_.CommandLine -match "run_all.py|run.py|webapp_main.py"
+} | Select-Object ProcessId, ExecutablePath, CommandLine
+
+ثم أوقف نسخ المشروع القديمة، خصوصًا النسخ التي تعمل من مجلدات أخرى.
+
+2) خذ نسخة احتياطية من:
+- .env
+- crypto_sales_bot.db
+- backups/
+
+3) فك ضغط jaib_wallet_v16_update.zip داخل المجلد الرئيسي للمشروع V15، ووافق على استبدال الملفات.
+الحزمة لا تحتوي على .env أو قاعدة بيانات أو نسخ احتياطية.
+
+4) لا تستبدل مفاتيحك. أضف إعدادات V16 الاختيارية من .env.example إلى .env فقط عند الحاجة. القيم الافتراضية تعمل دون إضافتها.
+
+5) نفذ الفحص:
+
+python -m compileall -q bot run.py webapp_main.py run_all.py
+python verify_project.py
+
+6) شغّل المشروع من المجلد نفسه وبأمر واحد فقط:
+
+python run_all.py
+
+لا تشغّل run.py أو webapp_main.py بالتوازي مع run_all.py.
+
+7) راقب بداية السجل. يجب أن يظهر سطران باسم Runtime identity للبوت وMini App. قارن:
+- db
+- env
+- key_fp
+- egress_ip
+
+يجب أن يتطابق مسار قاعدة البيانات وملف البيئة وبصمة المفتاح. وفي الوضع المعتاد على الجهاز نفسه يتطابق egress_ip أيضًا.
+
+8) يجب أن يكون egress_ip الظاهر هو IPv4 المضاف إلى Trusted IPs في مفتاح Binance. لا ترسل API Key أو Secret لأي شخص.
+
+9) لا تعد يدويًا رصيد عملية حالتها SUBMITTED أو PROCESSING أو STATUS_UNKNOWN. افحص سجل Binance أولًا، لأن الطلب قد يكون وصل رغم انقطاع الرد.
+
+10) الجداول والأعمدة الجديدة تُنشأ تلقائيًا عند أول تشغيل.
